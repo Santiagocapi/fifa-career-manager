@@ -1,22 +1,23 @@
 // ============================================================
 // src/pages/Squad.tsx
-// Squad management: view, add, edit players.
+// Squad management: view, add, edit players & tenure tracking.
 // ============================================================
 
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, centsToDollars } from '../lib/constants';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Minus, Edit2, UserX, Loader2, X } from 'lucide-react';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars } from '../lib/constants';
+import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
-import type { CreatePlayerDto, PlayerPosition } from '../types/database';
+import type { CreatePlayerDto, PlayerPosition, PlayerWithStats } from '../types/database';
 
 interface PlayerFormData {
   full_name: string;
   preferred_position: PlayerPosition;
   nationality: string;
   age: number;
+  joined_year: number;
   ovr_start: number;
   market_value_start: number;
   salary: number;
@@ -24,15 +25,17 @@ interface PlayerFormData {
 
 export default function Squad() {
   const { activeCareer, activeSeason } = useAppStore();
-  const { players, loading, addPlayer, deactivatePlayer } = usePlayers(
+  const { players, loading, addPlayer, updatePlayer, updateStats, deactivatePlayer } = usePlayers(
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );
+
   const [showForm, setShowForm] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<PlayerWithStats | null>(null);
   const [search, setSearch] = useState('');
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlayerFormData>();
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<PlayerFormData>();
 
   const filteredPlayers = players.filter(p => {
     const matchesSearch = p.full_name.toLowerCase().includes(search.toLowerCase());
@@ -40,24 +43,78 @@ export default function Squad() {
     return matchesSearch && matchesFilter;
   });
 
+  const openAddForm = () => {
+    reset({
+      full_name: '',
+      preferred_position: 'CM',
+      nationality: '',
+      age: 21,
+      joined_year: new Date().getFullYear(),
+      ovr_start: 75,
+      market_value_start: 5000000,
+      salary: 15000,
+    });
+    setEditingPlayer(null);
+    setShowForm(true);
+  };
+
+  const openEditForm = (player: PlayerWithStats) => {
+    setEditingPlayer(player);
+    reset({
+      full_name: player.full_name,
+      preferred_position: player.preferred_position,
+      nationality: player.nationality || '',
+      age: player.age || 21,
+      joined_year: player.joined_year || new Date().getFullYear(),
+      ovr_start: player.stats?.ovr_start || 75,
+      market_value_start: centsToDollars(player.stats?.market_value_start),
+      salary: centsToDollars(player.stats?.salary),
+    });
+    setShowForm(true);
+  };
+
   const onSubmit = async (data: PlayerFormData) => {
     if (!activeCareer) return;
-    const playerDto: CreatePlayerDto = {
-      career_id: activeCareer.id,
-      full_name: data.full_name,
-      preferred_position: data.preferred_position,
-      nationality: data.nationality || null,
-      age: data.age || null,
-      date_of_birth: null,
-      photo_url: null,
-      is_active: true,
-    };
-    await addPlayer(playerDto, {
-      ovr_start: data.ovr_start,
-      market_value_start: data.market_value_start,
-      salary: data.salary,
-    });
+
+    if (editingPlayer) {
+      // Edit existing player
+      await updatePlayer(editingPlayer.id, {
+        full_name: data.full_name,
+        preferred_position: data.preferred_position,
+        nationality: data.nationality || null,
+        age: data.age || null,
+        joined_year: data.joined_year || new Date().getFullYear(),
+      });
+
+      if (activeSeason && editingPlayer.stats) {
+        await updateStats(editingPlayer.id, activeSeason.id, {
+          ovr_start: data.ovr_start,
+          market_value_start: dollarsToCents(data.market_value_start),
+          salary: dollarsToCents(data.salary),
+        });
+      }
+    } else {
+      // Create new player
+      const playerDto: CreatePlayerDto = {
+        career_id: activeCareer.id,
+        full_name: data.full_name,
+        preferred_position: data.preferred_position,
+        nationality: data.nationality || null,
+        age: data.age || null,
+        joined_year: data.joined_year || new Date().getFullYear(),
+        date_of_birth: null,
+        photo_url: null,
+        is_active: true,
+      };
+      await addPlayer(playerDto, {
+        ovr_start: data.ovr_start,
+        market_value_start: data.market_value_start,
+        salary: data.salary,
+      });
+    }
+
     reset();
+    setEditingPlayer(null);
     setShowForm(false);
   };
 
@@ -73,7 +130,7 @@ export default function Squad() {
             {players.length} players · {activeSeason?.year_label ?? 'No active season'}
           </p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary">
+        <button onClick={openAddForm} className="btn-primary">
           <Plus size={16} /> Add Player
         </button>
       </div>
@@ -107,12 +164,14 @@ export default function Squad() {
         </div>
       </div>
 
-      {/* Add Player Form Modal */}
+      {/* Add / Edit Player Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="glass-card p-6 w-full max-w-lg animate-fade-in">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-white text-lg">Add New Player</h3>
+              <h3 className="font-bold text-white text-lg">
+                {editingPlayer ? 'Edit Player Details' : 'Add New Player'}
+              </h3>
               <button onClick={() => setShowForm(false)} className="btn-ghost p-2">
                 <X size={18} />
               </button>
@@ -143,6 +202,10 @@ export default function Squad() {
                   <input type="number" min={14} max={50} placeholder="21" {...register('age', { valueAsNumber: true })} />
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Joined Year</label>
+                  <input type="number" min={2000} max={2060} placeholder="2024" {...register('joined_year', { valueAsNumber: true })} />
+                </div>
+                <div className="form-group">
                   <label className="form-label">OVR (Start of Season)</label>
                   <input type="number" min={1} max={99} placeholder="75" {...register('ovr_start', { valueAsNumber: true })} />
                 </div>
@@ -157,8 +220,8 @@ export default function Squad() {
               </div>
               <div className="flex gap-3 mt-2">
                 <button type="submit" disabled={isSubmitting} className="btn-primary flex-1 justify-center">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Add Player
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : editingPlayer ? <Save size={16} /> : <Plus size={16} />}
+                  {editingPlayer ? 'Save Changes' : 'Add Player'}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
                   Cancel
@@ -190,11 +253,20 @@ export default function Squad() {
             return (
               <div
                 key={player.id}
-                className="card p-4 flex flex-col gap-3 animate-fade-in group hover:border-white/10 transition-all"
+                className="card p-4 flex flex-col gap-3 animate-fade-in group hover:border-white/10 transition-all relative"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
+                {/* Edit Button */}
+                <button
+                  onClick={() => openEditForm(player)}
+                  className="absolute top-3 right-3 btn-ghost p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  title="Edit Player"
+                >
+                  <Edit2 size={14} />
+                </button>
+
                 {/* Card top: avatar + position + OVR */}
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 pr-6">
                   {/* Dynamic Avatar */}
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 border border-white/10"
@@ -212,8 +284,10 @@ export default function Squad() {
                       {player.age && (
                         <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
                       )}
-                      {player.nationality && (
-                        <span className="text-xs text-white/40 truncate">{player.nationality}</span>
+                      {player.joined_year && (
+                        <span className="text-[10px] text-neon-400/80 bg-neon-400/10 px-1.5 py-0.5 rounded font-mono">
+                          Since {player.joined_year}
+                        </span>
                       )}
                     </div>
                   </div>

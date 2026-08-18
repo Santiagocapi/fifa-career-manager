@@ -66,6 +66,7 @@ export interface Player {
   nationality: string | null;
   preferred_position: PlayerPosition;
   age: number | null;             // FIFA age (e.g. 21)
+  joined_year: number | null;     // Year joined club (e.g. 2024)
   date_of_birth: string | null;   // legacy ISO date string (optional)
   photo_url: string | null;
   is_active: boolean;
@@ -93,6 +94,43 @@ export interface SeasonStats {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type MatchResult = 'win' | 'draw' | 'loss';
+
+export interface Match {
+  id: string;
+  season_id: string;
+  opponent: string;
+  competition: string | null;
+  team_score: number;
+  opponent_score: number;
+  result: MatchResult;
+  mvp_player_id: string | null;
+  match_date: string;
+  created_at: string;
+}
+
+export interface MatchEvent {
+  id: string;
+  match_id: string;
+  player_id: string;
+  goals: number;
+  assists: number;
+  yellow_card: boolean;
+  red_card: boolean;
+  clean_sheet: boolean;
+  injured: boolean;
+}
+
+export interface H2HRecord {
+  opponent: string;
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
 }
 
 export interface ScoutingEntry {
@@ -146,6 +184,12 @@ export interface PlayerWithStats extends Player {
   stats: SeasonStats | null;
 }
 
+// A match with its events and MVP player details
+export interface MatchWithDetails extends Match {
+  mvp_player?: Player | null;
+  events: (MatchEvent & { player: Player })[];
+}
+
 // A season with its list of trophies
 export interface SeasonWithTrophies extends Season {
   trophies: Trophy[];
@@ -165,3 +209,5 @@ export type CreatePlayerDto = Omit<Player, 'id' | 'created_at' | 'updated_at'>;
 export type CreateSeasonStatsDto = Omit<SeasonStats, 'id' | 'created_at' | 'updated_at'>;
 export type CreateScoutingEntryDto = Omit<ScoutingEntry, 'id' | 'created_at' | 'updated_at'>;
 export type CreateTrophyDto = Omit<Trophy, 'id' | 'created_at'>;
+export type CreateMatchDto = Omit<Match, 'id' | 'created_at'>;
+export type CreateMatchEventDto = Omit<MatchEvent, 'id'>;

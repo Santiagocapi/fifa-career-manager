@@ -1,0 +1,272 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+@layer base {
+  :root {
+    --color-neon: #00ff87;
+    --color-electric: #00c8ff;
+    --color-bg: #0a0a0f;
+    --color-surface: #111118;
+    --color-border: #1e1e2e;
+  }
+
+  html {
+    @apply bg-pitch-900 text-white;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    @apply font-sans antialiased overflow-x-hidden;
+    background-color: var(--color-bg);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(0, 255, 135, 0.03) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0, 200, 255, 0.03) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+
+  * {
+    @apply border-pitch-700;
+    scrollbar-width: thin;
+    scrollbar-color: #1e1e2e #0a0a0f;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #0a0a0f;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #1e1e2e;
+    border-radius: 3px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #00ff8766;
+  }
+
+  h1 { @apply text-3xl font-bold tracking-tight; }
+  h2 { @apply text-2xl font-semibold tracking-tight; }
+  h3 { @apply text-xl font-semibold; }
+  h4 { @apply text-lg font-medium; }
+
+  input, textarea, select {
+    @apply bg-pitch-800 border border-pitch-700 text-white rounded-xl px-4 py-2.5
+           placeholder:text-white/30 focus:outline-none focus:border-neon-400
+           focus:ring-1 focus:ring-neon-400/30 transition-all duration-200;
+  }
+}
+
+/* ============================================================
+   COMPONENT UTILITIES
+   ============================================================ */
+@layer components {
+
+  /* ---- Cards ---- */
+  .card {
+    @apply bg-pitch-800 border border-pitch-700 rounded-2xl shadow-card transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply bg-pitch-800 border border-pitch-700 rounded-2xl shadow-card transition-all duration-300;
+  }
+  .card-hover:hover {
+    @apply border-neon-400/30 shadow-card-hover -translate-y-0.5;
+  }
+
+  .glass-card {
+    @apply rounded-2xl border border-white/[0.06] shadow-card;
+    background: rgba(17, 17, 24, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ---- Buttons ---- */
+  /* NOTE: hover:/focus:/disabled: variants cannot be used inside @apply with
+     custom theme colors in Tailwind v3 @layer components.
+     We use CSS pseudo-class selectors instead. */
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium
+           text-sm transition-all duration-200 cursor-pointer select-none;
+  }
+  .btn:focus {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-offset-color: theme('colors.pitch.900');
+  }
+  .btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-neon-400 text-pitch-950 shadow-neon-sm;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-neon-300 shadow-neon;
+  }
+  .btn-primary:focus {
+    --tw-ring-color: theme('colors.neon.400');
+  }
+
+  .btn-secondary {
+    @apply btn bg-pitch-700 text-white border border-pitch-600;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply bg-pitch-600;
+  }
+  .btn-secondary:focus {
+    --tw-ring-color: theme('colors.pitch.500');
+  }
+
+  .btn-ghost {
+    @apply btn text-white/70;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply text-white bg-pitch-700/50;
+  }
+  .btn-ghost:focus {
+    --tw-ring-color: theme('colors.pitch.500');
+  }
+
+  .btn-danger {
+    @apply btn bg-red-500/10 text-red-400 border border-red-500/20;
+  }
+  .btn-danger:hover:not(:disabled) {
+    @apply bg-red-500/20;
+  }
+  .btn-danger:focus {
+    --tw-ring-color: theme('colors.red.500');
+  }
+
+  /* ---- Neon Text ---- */
+  .text-neon-glow {
+    color: var(--color-neon);
+    text-shadow: 0 0 20px rgba(0, 255, 135, 0.5);
+  }
+
+  /* ---- Badges ---- */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold;
+  }
+
+  .badge-gk  { @apply badge bg-amber-500/15 text-amber-400 border border-amber-500/20; }
+  .badge-def { @apply badge bg-blue-500/15 text-blue-400 border border-blue-500/20; }
+  .badge-mid { @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20; }
+  .badge-fwd { @apply badge bg-red-500/15 text-red-400 border border-red-500/20; }
+
+  /* ---- Stats grid ---- */
+  .stat-card {
+    @apply p-4 flex flex-col gap-1;
+    @apply bg-pitch-800 border border-pitch-700 rounded-2xl shadow-card transition-all duration-300;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-white;
+  }
+
+  .stat-label {
+    @apply text-xs text-white/50 uppercase tracking-wider;
+  }
+
+  /* ---- Navigation ---- */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+           text-white/60 transition-all duration-200 cursor-pointer;
+  }
+  .nav-item:hover {
+    @apply text-white bg-pitch-700/60;
+  }
+
+  .nav-item-active {
+    @apply nav-item text-neon-400 bg-neon-400/10;
+  }
+  .nav-item-active:hover {
+    @apply text-neon-400 bg-neon-400/10;
+  }
+
+  /* ---- Form elements ---- */
+  .form-group {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .form-label {
+    @apply text-sm font-medium text-white/70;
+  }
+
+  .form-error {
+    @apply text-xs text-red-400 mt-1;
+  }
+
+  /* ---- Dividers ---- */
+  .divider {
+    @apply border-t border-pitch-700;
+  }
+
+  /* ---- OVR display (the big number) ---- */
+  .ovr-badge {
+    @apply flex items-center justify-center w-12 h-12 rounded-xl
+           text-xl font-black bg-pitch-700 border border-pitch-600
+           tabular-nums;
+  }
+
+  /* ---- Neon border effect ---- */
+  .neon-border {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(#111118, #111118) padding-box,
+      linear-gradient(135deg, #00ff87, #00c8ff) border-box;
+  }
+
+  /* ---- Pitch (tactical board) ---- */
+  .pitch-container {
+    background:
+      linear-gradient(180deg,
+        rgba(0, 100, 30, 0.9) 0%,
+        rgba(0, 120, 35, 0.85) 50%,
+        rgba(0, 100, 30, 0.9) 100%
+      );
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    @apply rounded-2xl relative overflow-hidden;
+  }
+
+  /* ---- Page transitions ---- */
+  .page-enter {
+    @apply animate-fade-in;
+  }
+
+  /* ---- Loading skeleton ---- */
+  .skeleton {
+    @apply bg-pitch-700 rounded-lg overflow-hidden relative;
+    background: linear-gradient(
+      90deg,
+      theme('colors.pitch.800') 25%,
+      theme('colors.pitch.700') 50%,
+      theme('colors.pitch.800') 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+/* ============================================================
+   CUSTOM UTILITIES
+   ============================================================ */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .transition-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .gpu {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+}

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, centsToDollars } from '../lib/constants';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Minus, Edit2, UserX, Loader2, X } from 'lucide-react';
+import { Plus, Search, Filter, TrendingUp, TrendingDown, Minus, Edit2, UserX, Loader2, X, Calendar } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
 import type { CreatePlayerDto, PlayerPosition } from '../types/database';
@@ -17,6 +17,7 @@ interface PlayerFormData {
   preferred_position: PlayerPosition;
   nationality: string;
   age: number;
+  joined_year: number;
   ovr_start: number;
   market_value_start: number;
   salary: number;
@@ -48,6 +49,7 @@ export default function Squad() {
       preferred_position: data.preferred_position,
       nationality: data.nationality || null,
       age: data.age || null,
+      joined_year: data.joined_year || new Date().getFullYear(),
       date_of_birth: null,
       photo_url: null,
       is_active: true,
@@ -143,6 +145,10 @@ export default function Squad() {
                   <input type="number" min={14} max={50} placeholder="21" {...register('age', { valueAsNumber: true })} />
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Joined Year</label>
+                  <input type="number" min={2000} max={2060} defaultValue={new Date().getFullYear()} placeholder="2024" {...register('joined_year', { valueAsNumber: true })} />
+                </div>
+                <div className="form-group">
                   <label className="form-label">OVR (Start of Season)</label>
                   <input type="number" min={1} max={99} placeholder="75" {...register('ovr_start', { valueAsNumber: true })} />
                 </div>
@@ -212,8 +218,10 @@ export default function Squad() {
                       {player.age && (
                         <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
                       )}
-                      {player.nationality && (
-                        <span className="text-xs text-white/40 truncate">{player.nationality}</span>
+                      {player.joined_year && (
+                        <span className="text-[10px] text-neon-400/80 bg-neon-400/10 px-1.5 py-0.5 rounded font-mono">
+                          Since {player.joined_year}
+                        </span>
                       )}
                     </div>
                   </div>

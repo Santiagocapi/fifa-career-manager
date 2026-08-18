@@ -120,6 +120,7 @@ export interface MatchEvent {
   yellow_card: boolean;
   red_card: boolean;
   clean_sheet: boolean;
+  injured: boolean;
 }
 
 export interface H2HRecord {

@@ -33,8 +33,10 @@ CREATE TABLE IF NOT EXISTS match_events (
   yellow_card BOOLEAN DEFAULT FALSE,
   red_card    BOOLEAN DEFAULT FALSE,
   clean_sheet BOOLEAN DEFAULT FALSE,
+  injured     BOOLEAN DEFAULT FALSE,
   UNIQUE(match_id, player_id)
 );
+ALTER TABLE match_events ADD COLUMN IF NOT EXISTS injured BOOLEAN DEFAULT FALSE;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_matches_season_id ON matches(season_id);

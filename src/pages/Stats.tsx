@@ -21,6 +21,7 @@ interface PlayerMatchPerformance {
   yellow_card: boolean;
   red_card: boolean;
   clean_sheet: boolean;
+  injured: boolean;
 }
 
 const COMPETITIONS = ['League', 'Domestic Cup', 'Champions League', 'Europa League', 'Super Cup', 'Friendly'];
@@ -56,7 +57,7 @@ export default function Stats() {
     setTeamScore(0);
     setOpponentScore(0);
     setMvpPlayerId('');
-    // Initialize empty event state for each player
+    // Initialize event state for each player (default injured: false)
     const initialEvents: Record<string, PlayerMatchPerformance> = {};
     players.forEach(p => {
       initialEvents[p.id] = {
@@ -66,6 +67,7 @@ export default function Stats() {
         yellow_card: false,
         red_card: false,
         clean_sheet: false,
+        injured: false,
       };
     });
     setPlayerEvents(initialEvents);
@@ -91,6 +93,7 @@ export default function Stats() {
         yellow_card: existingEv?.yellow_card || false,
         red_card: existingEv?.red_card || false,
         clean_sheet: existingEv?.clean_sheet || false,
+        injured: existingEv?.injured || false,
       };
     });
     setPlayerEvents(eventsMap);
@@ -112,9 +115,8 @@ export default function Stats() {
     if (!opponent.trim()) return;
 
     setSubmitting(true);
-    const activeEvents = Object.values(playerEvents).filter(
-      e => e.goals > 0 || e.assists > 0 || e.yellow_card || e.red_card || e.clean_sheet
-    );
+    // Send all player events so every non-injured player gets +1 match played
+    const allEvents = Object.values(playerEvents);
 
     const payload = {
       opponent: opponent.trim(),
@@ -122,7 +124,7 @@ export default function Stats() {
       team_score: Number(teamScore) || 0,
       opponent_score: Number(opponentScore) || 0,
       mvp_player_id: mvpPlayerId || null,
-      playerEvents: activeEvents,
+      playerEvents: allEvents,
     };
 
     let success = false;
@@ -150,6 +152,12 @@ export default function Stats() {
       goals: p.stats?.goals ?? 0,
       assists: p.stats?.assists ?? 0,
     }));
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!confirm('Delete this match? Player statistics from this match will be reverted.')) return;
+    await deleteMatch(matchId);
+    refetchPlayers();
+  };
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -238,7 +246,10 @@ export default function Stats() {
 
               {/* Player Events Table */}
               <div>
-                <h4 className="font-semibold text-white text-sm mb-3">Player Performances in Match</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-white text-sm">Player Performances in Match</h4>
+                  <span className="text-[11px] text-white/40">Check 🚑 INJ to mark player as Injured / Out (+0 match played)</span>
+                </div>
                 <div className="border border-pitch-700 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700">
@@ -249,49 +260,59 @@ export default function Stats() {
                         <th className="p-2 text-center text-white/50">🟨 YC</th>
                         <th className="p-2 text-center text-white/50">🟥 RC</th>
                         <th className="p-2 text-center text-white/50">🧤 CS</th>
+                        <th className="p-2 text-center text-red-400">🚑 INJ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-pitch-700/50">
                       {players.map(p => {
-                        const ev = playerEvents[p.id] || { goals: 0, assists: 0, yellow_card: false, red_card: false, clean_sheet: false };
+                        const ev = playerEvents[p.id] || { goals: 0, assists: 0, yellow_card: false, red_card: false, clean_sheet: false, injured: false };
                         return (
-                          <tr key={p.id} className="hover:bg-pitch-800/40">
+                          <tr key={p.id} className={clsx('hover:bg-pitch-800/40', ev.injured && 'opacity-40 bg-red-950/10')}>
                             <td className="p-2 font-medium text-white">
                               {p.full_name} <span className="text-[10px] text-white/40">({p.preferred_position})</span>
+                              {ev.injured && <span className="ml-1 text-[9px] text-red-400 font-bold">[INJURED]</span>}
                             </td>
                             <td className="p-2 text-center">
                               <input
-                                type="number" min={0} max={10} value={ev.goals}
+                                type="number" min={0} max={10} value={ev.goals} disabled={ev.injured}
                                 onChange={e => updatePlayerEvent(p.id, 'goals', Number(e.target.value))}
-                                className="w-12 text-center py-1 px-1 text-xs"
+                                className="w-12 text-center py-1 px-1 text-xs disabled:opacity-30"
                               />
                             </td>
                             <td className="p-2 text-center">
                               <input
-                                type="number" min={0} max={10} value={ev.assists}
+                                type="number" min={0} max={10} value={ev.assists} disabled={ev.injured}
                                 onChange={e => updatePlayerEvent(p.id, 'assists', Number(e.target.value))}
-                                className="w-12 text-center py-1 px-1 text-xs"
+                                className="w-12 text-center py-1 px-1 text-xs disabled:opacity-30"
                               />
                             </td>
                             <td className="p-2 text-center">
                               <input
-                                type="checkbox" checked={ev.yellow_card}
+                                type="checkbox" checked={ev.yellow_card} disabled={ev.injured}
                                 onChange={e => updatePlayerEvent(p.id, 'yellow_card', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer"
+                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
                               />
                             </td>
                             <td className="p-2 text-center">
                               <input
-                                type="checkbox" checked={ev.red_card}
+                                type="checkbox" checked={ev.red_card} disabled={ev.injured}
                                 onChange={e => updatePlayerEvent(p.id, 'red_card', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer"
+                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
                               />
                             </td>
                             <td className="p-2 text-center">
                               <input
-                                type="checkbox" checked={ev.clean_sheet}
+                                type="checkbox" checked={ev.clean_sheet} disabled={ev.injured}
                                 onChange={e => updatePlayerEvent(p.id, 'clean_sheet', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer"
+                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
+                              />
+                            </td>
+                            <td className="p-2 text-center">
+                              <input
+                                type="checkbox" checked={ev.injured}
+                                onChange={e => updatePlayerEvent(p.id, 'injured', e.target.checked)}
+                                className="w-4 h-4 cursor-pointer accent-red-500"
+                                title="Injured / Out (Will not increment matches played)"
                               />
                             </td>
                           </tr>
@@ -408,7 +429,7 @@ export default function Stats() {
                       <Edit2 size={13} />
                     </button>
                     <button
-                      onClick={() => deleteMatch(m.id)}
+                      onClick={() => handleDeleteMatch(m.id)}
                       className="btn-danger p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Delete Match"
                     >

@@ -22,6 +22,7 @@ interface LogMatchPayload {
     yellow_card: boolean;
     red_card: boolean;
     clean_sheet: boolean;
+    injured: boolean;
   }[];
 }
 
@@ -129,7 +130,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
       return false;
     }
 
-    // 2. Insert match_events for players who participated
+    // 2. Insert match_events for players
     if (payload.playerEvents.length > 0) {
       const eventRows = payload.playerEvents.map(e => ({
         match_id: newMatch.id,
@@ -139,11 +140,12 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
         yellow_card: e.yellow_card,
         red_card: e.red_card,
         clean_sheet: e.clean_sheet,
+        injured: e.injured,
       }));
 
       await supabase.from('match_events').insert(eventRows);
 
-      // 3. Update (increment) season_stats for each player in season_stats table
+      // 3. Update season_stats for each player
       for (const e of payload.playerEvents) {
         const { data: currentStats } = await supabase
           .from('season_stats')
@@ -156,7 +158,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
           await supabase
             .from('season_stats')
             .update({
-              matches_played: (currentStats.matches_played || 0) + 1,
+              matches_played: (currentStats.matches_played || 0) + (e.injured ? 0 : 1),
               goals: (currentStats.goals || 0) + e.goals,
               assists: (currentStats.assists || 0) + e.assists,
               yellow_cards: (currentStats.yellow_cards || 0) + (e.yellow_card ? 1 : 0),
@@ -196,7 +198,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
           await supabase
             .from('season_stats')
             .update({
-              matches_played: Math.max(0, (currentStats.matches_played || 0) - 1),
+              matches_played: Math.max(0, (currentStats.matches_played || 0) - (oldEv.injured ? 0 : 1)),
               goals: Math.max(0, (currentStats.goals || 0) - (oldEv.goals || 0)),
               assists: Math.max(0, (currentStats.assists || 0) - (oldEv.assists || 0)),
               yellow_cards: Math.max(0, (currentStats.yellow_cards || 0) - (oldEv.yellow_card ? 1 : 0)),
@@ -244,6 +246,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
         yellow_card: e.yellow_card,
         red_card: e.red_card,
         clean_sheet: e.clean_sheet,
+        injured: e.injured,
       }));
 
       await supabase.from('match_events').insert(eventRows);
@@ -260,7 +263,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
           await supabase
             .from('season_stats')
             .update({
-              matches_played: (currentStats.matches_played || 0) + 1,
+              matches_played: (currentStats.matches_played || 0) + (e.injured ? 0 : 1),
               goals: (currentStats.goals || 0) + e.goals,
               assists: (currentStats.assists || 0) + e.assists,
               yellow_cards: (currentStats.yellow_cards || 0) + (e.yellow_card ? 1 : 0),
@@ -278,9 +281,45 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
   };
 
   const deleteMatch = async (matchId: string) => {
+    if (!seasonId) return;
+
+    // 1. Fetch match events for this match before deleting to revert player stats
+    const { data: oldEvents } = await supabase
+      .from('match_events')
+      .select('*')
+      .eq('match_id', matchId);
+
+    // 2. Revert player statistics from season_stats
+    if (oldEvents) {
+      for (const oldEv of oldEvents) {
+        const { data: currentStats } = await supabase
+          .from('season_stats')
+          .select('*')
+          .eq('player_id', oldEv.player_id)
+          .eq('season_id', seasonId)
+          .maybeSingle();
+
+        if (currentStats) {
+          await supabase
+            .from('season_stats')
+            .update({
+              matches_played: Math.max(0, (currentStats.matches_played || 0) - (oldEv.injured ? 0 : 1)),
+              goals: Math.max(0, (currentStats.goals || 0) - (oldEv.goals || 0)),
+              assists: Math.max(0, (currentStats.assists || 0) - (oldEv.assists || 0)),
+              yellow_cards: Math.max(0, (currentStats.yellow_cards || 0) - (oldEv.yellow_card ? 1 : 0)),
+              red_cards: Math.max(0, (currentStats.red_cards || 0) - (oldEv.red_card ? 1 : 0)),
+              clean_sheets: Math.max(0, (currentStats.clean_sheets || 0) - (oldEv.clean_sheet ? 1 : 0)),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', currentStats.id);
+        }
+      }
+    }
+
+    // 3. Delete match
     const { error: err } = await supabase.from('matches').delete().eq('id', matchId);
     if (err) setError(err.message);
-    else fetchMatches();
+    else await fetchMatches();
   };
 
   return {

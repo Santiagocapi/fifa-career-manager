@@ -21,7 +21,7 @@ interface CareerFormData {
 }
 
 export default function CareerSelect() {
-  const { careers, loading, createCareer, deleteCareer } = useCareers();
+  const { careers, loading, error, createCareer, deleteCareer } = useCareers();
   const { setActiveCareer, setActiveSeason } = useAppStore();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
@@ -135,6 +135,11 @@ export default function CareerSelect() {
         {showForm ? (
           <div className="glass-card p-6 animate-fade-in">
             <h3 className="font-bold text-white mb-4">New Career</h3>
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm mb-4">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="form-group">

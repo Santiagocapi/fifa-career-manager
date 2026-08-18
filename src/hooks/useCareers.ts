@@ -53,9 +53,18 @@ export const useCareers = (): UseCareersReturn => {
   }, [fetchCareers]);
 
   const createCareer = async (dto: CreateCareerDto): Promise<Career | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setError('User not authenticated');
+      return null;
+    }
+
     const { data, error: err } = await supabase
       .from('careers')
-      .insert(dto)
+      .insert({
+        ...dto,
+        user_id: user.id,
+      })
       .select()    // Return the inserted row
       .single();   // We expect exactly one row back
 

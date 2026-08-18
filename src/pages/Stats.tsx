@@ -1,7 +1,7 @@
 // ============================================================
 // src/pages/Stats.tsx
-// Performance stats, Match Logger (Opponent, Score, MVP),
-// Head-to-Head (H2H) records vs Opponents, and Leaderboards.
+// Performance stats, Match Logger & Editor (Opponent, Competition,
+// Score, MVP, Player Events), Head-to-Head (H2H) records, and Leaderboards.
 // ============================================================
 
 import { useState } from 'react';
@@ -9,9 +9,10 @@ import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
 import { POSITION_COLORS, getPositionGroup } from '../lib/constants';
-import { BarChart2, Plus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2 } from 'lucide-react';
+import { BarChart2, Plus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
+import type { MatchWithDetails } from '../types/database';
 
 interface PlayerMatchPerformance {
   player_id: string;
@@ -22,6 +23,8 @@ interface PlayerMatchPerformance {
   clean_sheet: boolean;
 }
 
+const COMPETITIONS = ['League', 'Domestic Cup', 'Champions League', 'Europa League', 'Super Cup', 'Friendly'];
+
 export default function Stats() {
   const { activeCareer, activeSeason } = useAppStore();
   const { players, loading: playersLoading, refetch: refetchPlayers } = usePlayers(
@@ -29,23 +32,27 @@ export default function Stats() {
     activeSeason?.id ?? null
   );
 
-  const { matches, h2hRecords, loading: matchesLoading, logMatch, deleteMatch } = useMatches(
+  const { matches, h2hRecords, loading: matchesLoading, logMatch, updateMatch, deleteMatch } = useMatches(
     activeSeason?.id ?? null,
     activeCareer?.id ?? null
   );
 
   const [logging, setLogging] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<MatchWithDetails | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Match Form state
   const [opponent, setOpponent] = useState('');
+  const [competition, setCompetition] = useState('League');
   const [teamScore, setTeamScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [mvpPlayerId, setMvpPlayerId] = useState<string>('');
   const [playerEvents, setPlayerEvents] = useState<Record<string, PlayerMatchPerformance>>({});
 
-  const handleOpenModal = () => {
+  const handleOpenAddModal = () => {
+    setEditingMatch(null);
     setOpponent('');
+    setCompetition('League');
     setTeamScore(0);
     setOpponentScore(0);
     setMvpPlayerId('');
@@ -65,6 +72,31 @@ export default function Stats() {
     setLogging(true);
   };
 
+  const handleOpenEditModal = (match: MatchWithDetails) => {
+    setEditingMatch(match);
+    setOpponent(match.opponent);
+    setCompetition(match.competition || 'League');
+    setTeamScore(match.team_score);
+    setOpponentScore(match.opponent_score);
+    setMvpPlayerId(match.mvp_player_id || '');
+
+    // Populate events map from existing match events
+    const eventsMap: Record<string, PlayerMatchPerformance> = {};
+    players.forEach(p => {
+      const existingEv = match.events.find(e => e.player_id === p.id);
+      eventsMap[p.id] = {
+        player_id: p.id,
+        goals: existingEv?.goals || 0,
+        assists: existingEv?.assists || 0,
+        yellow_card: existingEv?.yellow_card || false,
+        red_card: existingEv?.red_card || false,
+        clean_sheet: existingEv?.clean_sheet || false,
+      };
+    });
+    setPlayerEvents(eventsMap);
+    setLogging(true);
+  };
+
   const updatePlayerEvent = (playerId: string, field: keyof PlayerMatchPerformance, value: any) => {
     setPlayerEvents(prev => ({
       ...prev,
@@ -75,27 +107,35 @@ export default function Stats() {
     }));
   };
 
-  const handleLogMatch = async (e: React.FormEvent) => {
+  const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!opponent.trim()) return;
 
     setSubmitting(true);
-    // Filter only players who had any event (goals, assists, cards, clean sheet, or participated)
     const activeEvents = Object.values(playerEvents).filter(
       e => e.goals > 0 || e.assists > 0 || e.yellow_card || e.red_card || e.clean_sheet
     );
 
-    const success = await logMatch({
+    const payload = {
       opponent: opponent.trim(),
+      competition: competition || 'League',
       team_score: Number(teamScore) || 0,
       opponent_score: Number(opponentScore) || 0,
       mvp_player_id: mvpPlayerId || null,
       playerEvents: activeEvents,
-    });
+    };
+
+    let success = false;
+    if (editingMatch) {
+      success = await updateMatch(editingMatch.id, payload);
+    } else {
+      success = await logMatch(payload);
+    }
 
     if (success) {
       refetchPlayers();
       setLogging(false);
+      setEditingMatch(null);
     }
     setSubmitting(false);
   };
@@ -119,12 +159,12 @@ export default function Stats() {
           <h1 className="text-3xl font-black text-white">Match Logger & Performance</h1>
           <p className="text-white/50 text-sm mt-1">{activeSeason?.year_label ?? 'No active season'}</p>
         </div>
-        <button onClick={handleOpenModal} className="btn-primary" disabled={!activeSeason}>
+        <button onClick={handleOpenAddModal} className="btn-primary" disabled={!activeSeason}>
           <Plus size={16} /> Log Match
         </button>
       </div>
 
-      {/* Match Logger Modal */}
+      {/* Match Logger / Editor Modal */}
       {logging && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="glass-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
@@ -134,17 +174,19 @@ export default function Stats() {
                   <Swords size={20} className="text-neon-400" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-lg">Log Match Details</h3>
-                  <p className="text-white/40 text-xs">Record score, opponent, MVP & player stats</p>
+                  <h3 className="font-bold text-white text-lg">
+                    {editingMatch ? 'Edit Match Details' : 'Log Match Details'}
+                  </h3>
+                  <p className="text-white/40 text-xs">Record score, opponent, competition, MVP & player stats</p>
                 </div>
               </div>
               <button onClick={() => setLogging(false)} className="btn-ghost p-2"><X size={18} /></button>
             </div>
 
-            <form onSubmit={handleLogMatch} className="flex flex-col gap-6">
-              {/* Match Score & Opponent */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-pitch-900/60 border border-pitch-700">
-                <div className="form-group">
+            <form onSubmit={handleSaveMatch} className="flex flex-col gap-6">
+              {/* Match Score, Opponent & Competition */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl bg-pitch-900/60 border border-pitch-700">
+                <div className="form-group md:col-span-2">
                   <label className="form-label">Opponent (Rival) *</label>
                   <input
                     required
@@ -153,7 +195,15 @@ export default function Stats() {
                     onChange={e => setOpponent(e.target.value)}
                   />
                 </div>
-                <div className="form-group">
+                <div className="form-group md:col-span-2">
+                  <label className="form-label">Competition</label>
+                  <select value={competition} onChange={e => setCompetition(e.target.value)} className="w-full">
+                    {COMPETITIONS.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group md:col-span-2">
                   <label className="form-label">Your Goals</label>
                   <input
                     type="number"
@@ -162,7 +212,7 @@ export default function Stats() {
                     onChange={e => setTeamScore(Number(e.target.value))}
                   />
                 </div>
-                <div className="form-group">
+                <div className="form-group md:col-span-2">
                   <label className="form-label">Opponent Goals</label>
                   <input
                     type="number"
@@ -256,7 +306,7 @@ export default function Stats() {
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center py-3">
                   {submitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Save Match & Update Stats
+                  {editingMatch ? 'Save Changes' : 'Save Match & Update Stats'}
                 </button>
                 <button type="button" onClick={() => setLogging(false)} className="btn-secondary">Cancel</button>
               </div>
@@ -317,9 +367,9 @@ export default function Stats() {
           {matches.length === 0 ? (
             <p className="text-white/30 text-sm py-4 text-center">No matches recorded this season</p>
           ) : (
-            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
               {matches.map(m => (
-                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-pitch-700">
+                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-pitch-700 group hover:border-white/10 transition-all">
                   <div className="flex items-center gap-3">
                     <span className={clsx(
                       'w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0',
@@ -330,7 +380,14 @@ export default function Stats() {
                       {m.result.toUpperCase().charAt(0)}
                     </span>
                     <div>
-                      <p className="font-bold text-white text-sm">vs {m.opponent}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-white text-sm">vs {m.opponent}</p>
+                        {m.competition && (
+                          <span className="text-[10px] text-white/50 bg-pitch-700 px-1.5 py-0.5 rounded font-mono">
+                            {m.competition}
+                          </span>
+                        )}
+                      </div>
                       {m.mvp_player && (
                         <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
                           <Star size={10} /> MVP: {m.mvp_player.full_name}
@@ -343,8 +400,19 @@ export default function Stats() {
                     <span className="font-mono text-base font-black text-white">
                       {m.team_score} - {m.opponent_score}
                     </span>
-                    <button onClick={() => deleteMatch(m.id)} className="btn-danger p-1 text-xs">
-                      <Trash2 size={12} />
+                    <button
+                      onClick={() => handleOpenEditModal(m)}
+                      className="btn-ghost p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Edit Match"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteMatch(m.id)}
+                      className="btn-danger p-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete Match"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>

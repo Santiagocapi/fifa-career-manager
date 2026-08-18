@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS matches (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   season_id      UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
   opponent       TEXT NOT NULL,
+  competition    TEXT DEFAULT 'League',
   team_score     INT NOT NULL DEFAULT 0,
   opponent_score INT NOT NULL DEFAULT 0,
   result         TEXT NOT NULL CHECK (result IN ('win', 'draw', 'loss')),

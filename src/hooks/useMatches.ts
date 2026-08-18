@@ -1,7 +1,7 @@
 // ============================================================
 // src/hooks/useMatches.ts
 // Hook for fetching match history, logging new matches,
-// and calculating Head-to-Head (H2H) records against opponents.
+// editing past matches, and calculating Head-to-Head (H2H) records.
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,6 +10,7 @@ import type { Match, MatchEvent, MatchWithDetails, CreateMatchDto, CreateMatchEv
 
 interface LogMatchPayload {
   opponent: string;
+  competition?: string;
   team_score: number;
   opponent_score: number;
   mvp_player_id: string | null;
@@ -30,6 +31,7 @@ interface UseMatchesReturn {
   loading: boolean;
   error: string | null;
   logMatch: (payload: LogMatchPayload) => Promise<boolean>;
+  updateMatch: (matchId: string, payload: LogMatchPayload) => Promise<boolean>;
   deleteMatch: (matchId: string) => Promise<void>;
   refetch: () => void;
 }
@@ -108,6 +110,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
     const matchDto: CreateMatchDto = {
       season_id: seasonId,
       opponent: payload.opponent,
+      competition: payload.competition || 'League',
       team_score: payload.team_score,
       opponent_score: payload.opponent_score,
       result,
@@ -142,7 +145,110 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
 
       // 3. Update (increment) season_stats for each player in season_stats table
       for (const e of payload.playerEvents) {
-        // Fetch current season_stats row for player in this season
+        const { data: currentStats } = await supabase
+          .from('season_stats')
+          .select('*')
+          .eq('player_id', e.player_id)
+          .eq('season_id', seasonId)
+          .maybeSingle();
+
+        if (currentStats) {
+          await supabase
+            .from('season_stats')
+            .update({
+              matches_played: (currentStats.matches_played || 0) + 1,
+              goals: (currentStats.goals || 0) + e.goals,
+              assists: (currentStats.assists || 0) + e.assists,
+              yellow_cards: (currentStats.yellow_cards || 0) + (e.yellow_card ? 1 : 0),
+              red_cards: (currentStats.red_cards || 0) + (e.red_card ? 1 : 0),
+              clean_sheets: (currentStats.clean_sheets || 0) + (e.clean_sheet ? 1 : 0),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', currentStats.id);
+        }
+      }
+    }
+
+    await fetchMatches();
+    return true;
+  };
+
+  // Edit an existing match
+  const updateMatch = async (matchId: string, payload: LogMatchPayload): Promise<boolean> => {
+    if (!seasonId) return false;
+
+    // 1. Fetch old match events to revert old stats
+    const { data: oldEvents } = await supabase
+      .from('match_events')
+      .select('*')
+      .eq('match_id', matchId);
+
+    if (oldEvents) {
+      for (const oldEv of oldEvents) {
+        const { data: currentStats } = await supabase
+          .from('season_stats')
+          .select('*')
+          .eq('player_id', oldEv.player_id)
+          .eq('season_id', seasonId)
+          .maybeSingle();
+
+        if (currentStats) {
+          await supabase
+            .from('season_stats')
+            .update({
+              matches_played: Math.max(0, (currentStats.matches_played || 0) - 1),
+              goals: Math.max(0, (currentStats.goals || 0) - (oldEv.goals || 0)),
+              assists: Math.max(0, (currentStats.assists || 0) - (oldEv.assists || 0)),
+              yellow_cards: Math.max(0, (currentStats.yellow_cards || 0) - (oldEv.yellow_card ? 1 : 0)),
+              red_cards: Math.max(0, (currentStats.red_cards || 0) - (oldEv.red_card ? 1 : 0)),
+              clean_sheets: Math.max(0, (currentStats.clean_sheets || 0) - (oldEv.clean_sheet ? 1 : 0)),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', currentStats.id);
+        }
+      }
+    }
+
+    // 2. Delete old events
+    await supabase.from('match_events').delete().eq('match_id', matchId);
+
+    // 3. Update match details
+    let result: MatchResult = 'draw';
+    if (payload.team_score > payload.opponent_score) result = 'win';
+    else if (payload.team_score < payload.opponent_score) result = 'loss';
+
+    const { error: matchErr } = await supabase
+      .from('matches')
+      .update({
+        opponent: payload.opponent,
+        competition: payload.competition || 'League',
+        team_score: payload.team_score,
+        opponent_score: payload.opponent_score,
+        result,
+        mvp_player_id: payload.mvp_player_id || null,
+      })
+      .eq('id', matchId);
+
+    if (matchErr) {
+      setError(matchErr.message);
+      return false;
+    }
+
+    // 4. Insert new events and apply new stats
+    if (payload.playerEvents.length > 0) {
+      const eventRows = payload.playerEvents.map(e => ({
+        match_id: matchId,
+        player_id: e.player_id,
+        goals: e.goals,
+        assists: e.assists,
+        yellow_card: e.yellow_card,
+        red_card: e.red_card,
+        clean_sheet: e.clean_sheet,
+      }));
+
+      await supabase.from('match_events').insert(eventRows);
+
+      for (const e of payload.playerEvents) {
         const { data: currentStats } = await supabase
           .from('season_stats')
           .select('*')
@@ -183,6 +289,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
     loading,
     error,
     logMatch,
+    updateMatch,
     deleteMatch,
     refetch: fetchMatches,
   };

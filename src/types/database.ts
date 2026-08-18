@@ -102,6 +102,7 @@ export interface Match {
   id: string;
   season_id: string;
   opponent: string;
+  competition: string | null;
   team_score: number;
   opponent_score: number;
   result: MatchResult;

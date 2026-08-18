@@ -92,6 +92,8 @@ export interface SeasonStats {
   red_cards: number;
   clean_sheets: number;
   notes: string | null;
+  // Injury status — persistent flag; injured players are auto-skipped in match logging
+  is_injured: boolean;
   created_at: string;
   updated_at: string;
 }

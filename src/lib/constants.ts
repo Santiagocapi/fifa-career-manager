@@ -6,6 +6,35 @@
 // ============================================================
 
 import type { PlayerPosition, FormationScheme, ScoutingListType, TrophyType } from '../types/database';
+import { countries } from 'countries-list';
+
+// ============================================================
+// COUNTRY FLAG HELPER
+// Converts a country name string (e.g. "Argentina") to an
+// emoji flag (e.g. "🇦🇷") using the countries-list package
+// for the ISO 3166-1 alpha-2 code lookup.
+// Returns empty string if country not found (graceful fallback).
+// ============================================================
+const _countryNameToCode: Record<string, string> = {};
+for (const [code, data] of Object.entries(countries)) {
+  _countryNameToCode[data.name.toLowerCase()] = code;
+  if ('alias' in data && Array.isArray((data as any).alias)) {
+    for (const alias of (data as any).alias as string[]) {
+      _countryNameToCode[alias.toLowerCase()] = code;
+    }
+  }
+}
+
+export const getCountryFlag = (nationality: string | null | undefined): string => {
+  if (!nationality) return '';
+  const code = _countryNameToCode[nationality.trim().toLowerCase()];
+  if (!code) return '';
+  // Convert ISO 3166-1 alpha-2 to emoji: each letter → regional indicator symbol
+  return code.toUpperCase().split('').map(
+    char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))
+  ).join('');
+};
+
 
 // ============================================================
 // POSITIONS

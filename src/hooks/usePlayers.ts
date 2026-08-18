@@ -35,6 +35,7 @@ interface UsePlayersReturn {
     goals?: number; assists?: number; yellowCards?: number;
     redCards?: number; cleanSheets?: number; played?: boolean;
   }) => Promise<void>;
+  toggleInjured: (playerId: string, isInjured: boolean) => Promise<void>;
   deactivatePlayer: (id: string) => Promise<void>;
   refetch: () => void;
 }
@@ -214,6 +215,23 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     setPlayers(prev => prev.filter(p => p.id !== id));
   };
 
+  // Toggle the persistent injury status for a player in the active season
+  const toggleInjured = async (playerId: string, isInjured: boolean) => {
+    if (!seasonId) return;
+    const { error: err } = await supabase
+      .from('season_stats')
+      .update({ is_injured: isInjured, updated_at: new Date().toISOString() })
+      .eq('player_id', playerId)
+      .eq('season_id', seasonId);
+
+    if (err) setError(err.message);
+    else setPlayers(prev => prev.map(p =>
+      p.id === playerId && p.stats
+        ? { ...p, stats: { ...p.stats, is_injured: isInjured } }
+        : p
+    ));
+  };
+
   return {
     players,
     loading,
@@ -223,6 +241,7 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     updateStats,
     closeSeasonForPlayer,
     logMatchStats,
+    toggleInjured,
     deactivatePlayer,
     refetch: fetchPlayers,
   };

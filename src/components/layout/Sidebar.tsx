@@ -35,9 +35,11 @@ export default function Sidebar() {
 
   return (
     <aside className={clsx(
-      'fixed left-0 top-0 h-full z-40 flex flex-col',
+      'fixed left-0 top-0 h-full z-40 flex-col',
       'bg-pitch-800/95 backdrop-blur-xl border-r border-pitch-700',
       'transition-all duration-300',
+      // Hidden on mobile, shown as flex on md+ screens
+      'hidden md:flex',
       sidebarCollapsed ? 'w-[72px]' : 'w-[240px]'
     )}>
 

@@ -9,7 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
 import { POSITION_COLORS, getPositionGroup } from '../lib/constants';
-import { BarChart2, Plus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2 } from 'lucide-react';
+import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
 import type { MatchWithDetails } from '../types/database';
@@ -28,7 +28,7 @@ const COMPETITIONS = ['League', 'Domestic Cup', 'Champions League', 'Europa Leag
 
 export default function Stats() {
   const { activeCareer, activeSeason } = useAppStore();
-  const { players, loading: playersLoading, refetch: refetchPlayers } = usePlayers(
+  const { players, loading: playersLoading, refetch: refetchPlayers, toggleInjured } = usePlayers(
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );
@@ -37,6 +37,7 @@ export default function Stats() {
     activeSeason?.id ?? null,
     activeCareer?.id ?? null
   );
+
 
   const [logging, setLogging] = useState(false);
   const [editingMatch, setEditingMatch] = useState<MatchWithDetails | null>(null);
@@ -57,7 +58,7 @@ export default function Stats() {
     setTeamScore(0);
     setOpponentScore(0);
     setMvpPlayerId('');
-    // Initialize event state for each player (default injured: false)
+    // Initialize event state — pre-mark injured players from their persistent is_injured flag
     const initialEvents: Record<string, PlayerMatchPerformance> = {};
     players.forEach(p => {
       initialEvents[p.id] = {
@@ -67,7 +68,7 @@ export default function Stats() {
         yellow_card: false,
         red_card: false,
         clean_sheet: false,
-        injured: false,
+        injured: p.stats?.is_injured ?? false,
       };
     });
     setPlayerEvents(initialEvents);
@@ -248,72 +249,105 @@ export default function Stats() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-semibold text-white text-sm">Player Performances in Match</h4>
-                  <span className="text-[11px] text-white/40">Check 🚑 INJ to mark player as Injured / Out (+0 match played)</span>
+                  <span className="text-[11px] text-white/40">🚑 Injured players are pre-marked from squad status</span>
                 </div>
-                <div className="border border-pitch-700 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                <div className="border border-pitch-700 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700">
                       <tr>
                         <th className="p-2 text-left text-white/50">Player</th>
-                        <th className="p-2 text-center text-white/50">⚽ Goals</th>
-                        <th className="p-2 text-center text-white/50">🅰️ Assists</th>
-                        <th className="p-2 text-center text-white/50">🟨 YC</th>
-                        <th className="p-2 text-center text-white/50">🟥 RC</th>
-                        <th className="p-2 text-center text-white/50">🧤 CS</th>
-                        <th className="p-2 text-center text-red-400">🚑 INJ</th>
+                        <th className="p-2 text-center text-white/50">⚽ G</th>
+                        <th className="p-2 text-center text-white/50">🅰️ A</th>
+                        <th className="p-2 text-center text-white/50">🟨</th>
+                        <th className="p-2 text-center text-white/50">🟥</th>
+                        <th className="p-2 text-center text-white/50">🧤</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-pitch-700/50">
                       {players.map(p => {
                         const ev = playerEvents[p.id] || { goals: 0, assists: 0, yellow_card: false, red_card: false, clean_sheet: false, injured: false };
                         return (
-                          <tr key={p.id} className={clsx('hover:bg-pitch-800/40', ev.injured && 'opacity-40 bg-red-950/10')}>
+                          <tr key={p.id} className={clsx('transition-colors', ev.injured ? 'opacity-40 bg-red-950/10' : 'hover:bg-pitch-800/40')}>
                             <td className="p-2 font-medium text-white">
-                              {p.full_name} <span className="text-[10px] text-white/40">({p.preferred_position})</span>
-                              {ev.injured && <span className="ml-1 text-[9px] text-red-400 font-bold">[INJURED]</span>}
+                              <div className="flex items-center gap-1.5">
+                                {ev.injured && <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.5 rounded">INJ</span>}
+                                <span className="truncate max-w-[90px]">{p.full_name}</span>
+                                <span className="text-[9px] text-white/30">({p.preferred_position})</span>
+                              </div>
                             </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="number" min={0} max={10} value={ev.goals} disabled={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'goals', Number(e.target.value))}
-                                className="w-12 text-center py-1 px-1 text-xs disabled:opacity-30"
-                              />
+
+                            {/* Goals: - [n] + */}
+                            <td className="p-1.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button type="button" disabled={ev.injured || ev.goals <= 0}
+                                  onClick={() => updatePlayerEvent(p.id, 'goals', Math.max(0, ev.goals - 1))}
+                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                                  <Minus size={10} />
+                                </button>
+                                <span className={clsx('w-5 text-center font-bold', ev.goals > 0 ? 'text-neon-400' : 'text-white/30')}>
+                                  {ev.goals}
+                                </span>
+                                <button type="button" disabled={ev.injured}
+                                  onClick={() => updatePlayerEvent(p.id, 'goals', ev.goals + 1)}
+                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-neon-400/20 text-white/60 hover:text-neon-400 flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                                  <Plus size={10} />
+                                </button>
+                              </div>
                             </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="number" min={0} max={10} value={ev.assists} disabled={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'assists', Number(e.target.value))}
-                                className="w-12 text-center py-1 px-1 text-xs disabled:opacity-30"
-                              />
+
+                            {/* Assists: - [n] + */}
+                            <td className="p-1.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button type="button" disabled={ev.injured || ev.assists <= 0}
+                                  onClick={() => updatePlayerEvent(p.id, 'assists', Math.max(0, ev.assists - 1))}
+                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                                  <Minus size={10} />
+                                </button>
+                                <span className={clsx('w-5 text-center font-bold', ev.assists > 0 ? 'text-electric-400' : 'text-white/30')}>
+                                  {ev.assists}
+                                </span>
+                                <button type="button" disabled={ev.injured}
+                                  onClick={() => updatePlayerEvent(p.id, 'assists', ev.assists + 1)}
+                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-electric-400/20 text-white/60 hover:text-electric-400 flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                                  <Plus size={10} />
+                                </button>
+                              </div>
                             </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="checkbox" checked={ev.yellow_card} disabled={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'yellow_card', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
-                              />
+
+                            {/* Yellow Card toggle */}
+                            <td className="p-1.5 text-center">
+                              <button type="button" disabled={ev.injured}
+                                onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
+                                className={clsx(
+                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
+                                  ev.yellow_card ? 'bg-amber-400 text-pitch-900' : 'bg-pitch-700 text-white/30 hover:bg-amber-400/20 hover:text-amber-400'
+                                )}>
+                                🟨
+                              </button>
                             </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="checkbox" checked={ev.red_card} disabled={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'red_card', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
-                              />
+
+                            {/* Red Card toggle */}
+                            <td className="p-1.5 text-center">
+                              <button type="button" disabled={ev.injured}
+                                onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
+                                className={clsx(
+                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
+                                  ev.red_card ? 'bg-red-500 text-white' : 'bg-pitch-700 text-white/30 hover:bg-red-500/20 hover:text-red-400'
+                                )}>
+                                🟥
+                              </button>
                             </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="checkbox" checked={ev.clean_sheet} disabled={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'clean_sheet', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer disabled:opacity-30"
-                              />
-                            </td>
-                            <td className="p-2 text-center">
-                              <input
-                                type="checkbox" checked={ev.injured}
-                                onChange={e => updatePlayerEvent(p.id, 'injured', e.target.checked)}
-                                className="w-4 h-4 cursor-pointer accent-red-500"
-                                title="Injured / Out (Will not increment matches played)"
-                              />
+
+                            {/* Clean Sheet toggle */}
+                            <td className="p-1.5 text-center">
+                              <button type="button" disabled={ev.injured}
+                                onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
+                                className={clsx(
+                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
+                                  ev.clean_sheet ? 'bg-neon-400/20 text-neon-400 border border-neon-400/40' : 'bg-pitch-700 text-white/30 hover:bg-neon-400/10 hover:text-neon-400'
+                                )}>
+                                🧤
+                              </button>
                             </td>
                           </tr>
                         );
@@ -473,8 +507,9 @@ export default function Stats() {
 
       {/* Full Season Stats Table */}
       <div className="card overflow-hidden">
-        <div className="p-4 border-b border-pitch-700">
+        <div className="p-4 border-b border-pitch-700 flex items-center justify-between">
           <h3 className="font-semibold text-white">Full Season Player Leaderboard</h3>
+          <span className="text-[11px] text-white/40">Toggle 🚑 INJ to mark a player as injured (auto-skips future matches)</span>
         </div>
         {playersLoading ? (
           <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-neon-400" size={24} /></div>
@@ -483,8 +518,11 @@ export default function Stats() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-pitch-700">
-                  {['Player', 'Pos', 'MP', 'G', 'A', 'YC', 'RC', 'CS'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs text-white/40 uppercase tracking-wider font-medium">
+                  {['Player', 'Pos', 'MP', 'G', 'A', 'YC', 'RC', 'CS', '🚑'].map(h => (
+                    <th key={h} className={clsx(
+                      'px-4 py-3 text-left text-xs uppercase tracking-wider font-medium',
+                      h === '🚑' ? 'text-red-400' : 'text-white/40'
+                    )}>
                       {h}
                     </th>
                   ))}
@@ -493,10 +531,13 @@ export default function Stats() {
               <tbody>
                 {players.map((player, i) => {
                   const colors = POSITION_COLORS[getPositionGroup(player.preferred_position)];
+                  const isInjured = player.stats?.is_injured ?? false;
                   return (
                     <tr key={player.id} className={clsx(
-                      'border-b border-pitch-700/50 hover:bg-pitch-700/30 transition-colors',
-                      i % 2 === 0 ? 'bg-pitch-800/30' : ''
+                      'border-b border-pitch-700/50 transition-colors',
+                      isInjured
+                        ? 'bg-red-950/10 opacity-60'
+                        : i % 2 === 0 ? 'bg-pitch-800/30 hover:bg-pitch-700/30' : 'hover:bg-pitch-700/30'
                     )}>
                       <td className="px-4 py-3 font-medium text-white">{player.full_name}</td>
                       <td className="px-4 py-3">
@@ -508,6 +549,21 @@ export default function Stats() {
                       <td className="px-4 py-3 text-amber-400">{player.stats?.yellow_cards ?? 0}</td>
                       <td className="px-4 py-3 text-red-400">{player.stats?.red_cards ?? 0}</td>
                       <td className="px-4 py-3 text-white/50">{player.stats?.clean_sheets ?? 0}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => toggleInjured(player.id, !isInjured)}
+                          disabled={!player.stats}
+                          title={isInjured ? 'Mark as available' : 'Mark as injured'}
+                          className={clsx(
+                            'w-7 h-7 rounded-lg flex items-center justify-center transition-all text-sm disabled:opacity-30 disabled:cursor-not-allowed',
+                            isInjured
+                              ? 'bg-red-500/30 border border-red-500/50 text-red-400'
+                              : 'bg-pitch-700 border border-pitch-600 text-white/20 hover:border-red-500/40 hover:text-red-400 hover:bg-red-500/10'
+                          )}
+                        >
+                          🚑
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

@@ -50,6 +50,7 @@ CREATE TABLE players (
   full_name          TEXT NOT NULL,
   nationality        TEXT,
   preferred_position TEXT NOT NULL,   -- e.g., "ST", "CB", "GK"
+  age                INT,             -- FIFA age (e.g., 21)
   date_of_birth      DATE,
   photo_url          TEXT,            -- optional: URL to player image
   is_active          BOOLEAN NOT NULL DEFAULT TRUE,  -- false = sold/released

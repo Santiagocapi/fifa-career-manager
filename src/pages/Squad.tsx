@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, getPlayerInitials, getPlayerAvatarGradient, centsToDollars } from '../lib/constants';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, centsToDollars } from '../lib/constants';
 import { Plus, Search, Filter, TrendingUp, TrendingDown, Minus, Edit2, UserX, Loader2, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
@@ -16,7 +16,7 @@ interface PlayerFormData {
   full_name: string;
   preferred_position: PlayerPosition;
   nationality: string;
-  date_of_birth: string;
+  age: number;
   ovr_start: number;
   market_value_start: number;
   salary: number;
@@ -47,7 +47,8 @@ export default function Squad() {
       full_name: data.full_name,
       preferred_position: data.preferred_position,
       nationality: data.nationality || null,
-      date_of_birth: data.date_of_birth || null,
+      age: data.age || null,
+      date_of_birth: null,
       photo_url: null,
       is_active: true,
     };
@@ -138,8 +139,8 @@ export default function Squad() {
                   <input placeholder="Argentina" {...register('nationality')} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Date of Birth</label>
-                  <input type="date" {...register('date_of_birth')} />
+                  <label className="form-label">Age</label>
+                  <input type="number" min={14} max={50} placeholder="21" {...register('age', { valueAsNumber: true })} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">OVR (Start of Season)</label>
@@ -150,8 +151,8 @@ export default function Squad() {
                   <input type="number" min={0} placeholder="5000000" {...register('market_value_start', { valueAsNumber: true })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Annual Salary ($)</label>
-                  <input type="number" min={0} placeholder="1200000" {...register('salary', { valueAsNumber: true })} />
+                  <label className="form-label">Weekly Wage ($)</label>
+                  <input type="number" min={0} placeholder="15000" {...register('salary', { valueAsNumber: true })} />
                 </div>
               </div>
               <div className="flex gap-3 mt-2">
@@ -204,10 +205,13 @@ export default function Squad() {
 
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-white truncate">{player.full_name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className={clsx('badge text-[10px]', colors.badge)}>
                         {player.preferred_position}
                       </span>
+                      {player.age && (
+                        <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
+                      )}
                       {player.nationality && (
                         <span className="text-xs text-white/40 truncate">{player.nationality}</span>
                       )}
@@ -253,13 +257,21 @@ export default function Squad() {
                   </div>
                 )}
 
-                {/* Value */}
-                {player.stats?.market_value_start && (
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-white/40">Value</span>
-                    <span className="text-white/70 font-medium">
-                      {formatValue(player.stats.market_value_end ?? player.stats.market_value_start)}
-                    </span>
+                {/* Value & Wage */}
+                {(player.stats?.market_value_start || player.stats?.salary) && (
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-pitch-700">
+                    <div>
+                      <span className="text-white/40 text-[10px] uppercase tracking-wider block">Valuation</span>
+                      <span className="text-white/80 font-medium">
+                        {formatValue(player.stats?.market_value_end ?? player.stats?.market_value_start)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-white/40 text-[10px] uppercase tracking-wider block">Weekly Wage</span>
+                      <span className="text-neon-400 font-medium">
+                        {formatWage(player.stats?.salary)}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

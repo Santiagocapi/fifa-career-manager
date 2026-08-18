@@ -120,6 +120,14 @@ export const formatValue = (cents: number | null | undefined): string => {
   return `$${dollars.toFixed(0)}`;
 };
 
+// Convert wage cents to display string: 500000 -> "$5K/wk"
+export const formatWage = (cents: number | null | undefined): string => {
+  if (cents == null || cents === 0) return '—';
+  const dollars = cents / 100;
+  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(0)}K/wk`;
+  return `$${dollars.toFixed(0)}/wk`;
+};
+
 // Convert dollar string input to cents: "15000000" → 1500000000
 export const dollarsToCents = (dollars: number): number => Math.round(dollars * 100);
 

@@ -65,7 +65,8 @@ export interface Player {
   full_name: string;
   nationality: string | null;
   preferred_position: PlayerPosition;
-  date_of_birth: string | null;   // ISO date string
+  age: number | null;             // FIFA age (e.g. 21)
+  date_of_birth: string | null;   // legacy ISO date string (optional)
   photo_url: string | null;
   is_active: boolean;
   created_at: string;

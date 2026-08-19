@@ -25,14 +25,95 @@ for (const [code, data] of Object.entries(countries)) {
   }
 }
 
+const COMMON_FIFA_CODES: Record<string, string> = {
+  ARG: 'AR', ESP: 'ES', BRA: 'BR', FRA: 'FR', GER: 'DE', ITA: 'IT',
+  ENG: 'GB', GBR: 'GB', POR: 'PT', NED: 'NL', URU: 'UY', COL: 'CO',
+  CHI: 'CL', MEX: 'MX', USA: 'US', CRO: 'HR', SEN: 'SN', MAR: 'MA',
+  BEL: 'BE', JPN: 'JP', KOR: 'KR', SRB: 'RS', NGA: 'NG', CMR: 'CM',
+  PAR: 'PY', PER: 'PE', ECU: 'EC', VEN: 'VE', BOL: 'BO', CAN: 'CA',
+  AUS: 'AU', NOR: 'NO', SWE: 'SE', DEN: 'DK', POL: 'PL', SUI: 'CH',
+  AUT: 'AT', SCO: 'GB', WAL: 'GB', NIR: 'GB', ALG: 'DZ', EGY: 'EG',
+  CIV: 'CI', GHA: 'GH', RSA: 'ZA', TUR: 'TR', UKR: 'UA', CZE: 'CZ',
+  GRE: 'GR', ROU: 'RO', SVK: 'SK', SVN: 'SI', HUN: 'HU', FIN: 'FI',
+  IRL: 'IE', NZL: 'NZ', TUN: 'TN',
+};
+
+const SPANISH_AND_COMMON_COUNTRIES: Record<string, string> = {
+  'españa': 'es', 'argentin': 'ar', 'argentina': 'ar', 'brasil': 'br', 'brazil': 'br',
+  'francia': 'fr', 'alemania': 'de', 'italia': 'it', 'inglaterra': 'gb',
+  'reino unido': 'gb', 'portugal': 'pt', 'holanda': 'nl', 'países bajos': 'nl',
+  'paises bajos': 'nl', 'uruguay': 'uy', 'colombia': 'co', 'chile': 'cl',
+  'méxico': 'mx', 'mexico': 'mx', 'estados unidos': 'us', 'eeuu': 'us',
+  'croacia': 'hr', 'senegal': 'sn', 'marruecos': 'ma', 'bélgica': 'be',
+  'belgica': 'be', 'japón': 'jp', 'japon': 'jp', 'corea': 'kr', 'corea del sur': 'kr',
+  'serbia': 'rs', 'nigeria': 'ng', 'camerún': 'cm', 'camerun': 'cm', 'paraguay': 'py',
+  'perú': 'pe', 'peru': 'pe', 'ecuador': 'ec', 'venezuela': 've', 'bolivia': 'bo',
+  'canadá': 'ca', 'canada': 'ca', 'australia': 'au', 'noruega': 'no', 'suecia': 'se',
+  'dinamarca': 'dk', 'polonia': 'pl', 'suiza': 'ch', 'austria': 'at', 'escocia': 'gb',
+  'gales': 'gb', 'irlanda': 'ie', 'argelia': 'dz', 'egipto': 'eg', 'costa de marfil': 'ci',
+  'ghana': 'gh', 'sudáfrica': 'za', 'sudafrica': 'za', 'turquía': 'tr', 'turquia': 'tr',
+  'ucrania': 'ua', 'chequia': 'cz', 'república checa': 'cz', 'grecia': 'gr',
+  'rumanía': 'ro', 'rumania': 'ro', 'eslovaquia': 'sk', 'eslovenia': 'si',
+  'hungría': 'hu', 'hungria': 'hu', 'finlandia': 'fi', 'nueva zelanda': 'nz', 'túnez': 'tn', 'tunez': 'tn',
+};
+
+export const getCountryCode = (nationality: string | null | undefined): string | null => {
+  if (!nationality) return null;
+  const trimmed = nationality.trim().toLowerCase();
+
+  // 1. Spanish and common dictionary check
+  if (trimmed in SPANISH_AND_COMMON_COUNTRIES) {
+    return SPANISH_AND_COMMON_COUNTRIES[trimmed];
+  }
+
+  const upper = trimmed.toUpperCase();
+
+  // 2. Direct 2-letter ISO code (e.g. "AR", "ES", "SN", "US", "DE")
+  if (upper.length === 2 && upper in countries) {
+    return upper.toLowerCase();
+  }
+
+  // 3. 3-letter FIFA code (e.g. "ARG", "ESP", "BRA", "ENG")
+  if (upper in COMMON_FIFA_CODES) {
+    return COMMON_FIFA_CODES[upper].toLowerCase();
+  }
+
+  // 4. Full country name or alias in countries-list
+  const code = _countryNameToCode[trimmed];
+  return code ? code.toLowerCase() : null;
+};
+
 export const getCountryFlag = (nationality: string | null | undefined): string => {
   if (!nationality) return '';
-  const code = _countryNameToCode[nationality.trim().toLowerCase()];
+  const trimmed = nationality.trim();
+  const upper = trimmed.toUpperCase();
+
+  // 1. Direct 2-letter ISO code (e.g. "AR", "ES", "SN", "US", "DE")
+  if (upper.length === 2 && upper in countries) {
+    return upper.split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
+  }
+
+  // 2. 3-letter FIFA code (e.g. "ARG", "ESP", "BRA", "ENG")
+  if (upper in COMMON_FIFA_CODES) {
+    const code = COMMON_FIFA_CODES[upper];
+    return code.split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
+  }
+
+  // 3. Full country name or alias (e.g. "Argentina", "Spain")
+  const code = _countryNameToCode[trimmed.toLowerCase()];
   if (!code) return '';
-  // Convert ISO 3166-1 alpha-2 to emoji: each letter → regional indicator symbol
-  return code.toUpperCase().split('').map(
-    char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))
-  ).join('');
+  return code.toUpperCase().split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
+};
+
+export const GROUP_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+
+export const sortPlayersByPosition = <T extends { preferred_position: PlayerPosition; full_name: string }>(playersList: T[]): T[] => {
+  return [...playersList].sort((a, b) => {
+    const ga = GROUP_ORDER[getPositionGroup(a.preferred_position)] ?? 9;
+    const gb = GROUP_ORDER[getPositionGroup(b.preferred_position)] ?? 9;
+    if (ga !== gb) return ga - gb;
+    return a.preferred_position.localeCompare(b.preferred_position) || a.full_name.localeCompare(b.full_name);
+  });
 };
 
 

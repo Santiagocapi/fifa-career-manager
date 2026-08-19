@@ -8,8 +8,8 @@ import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
-import { POSITION_COLORS, getPositionGroup } from '../lib/constants';
-import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2 } from 'lucide-react';
+import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition } from '../lib/constants';
+import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
 import type { MatchWithDetails } from '../types/database';
@@ -37,6 +37,9 @@ export default function Stats() {
     activeSeason?.id ?? null,
     activeCareer?.id ?? null
   );
+
+  // Sort players by position group (GK -> DEF -> MID -> FWD)
+  const sortedPlayers = sortPlayersByPosition(players);
 
 
   const [logging, setLogging] = useState(false);
@@ -208,11 +211,18 @@ export default function Stats() {
                 </div>
                 <div className="form-group col-span-2 md:col-span-1">
                   <label className="form-label">Competition</label>
-                  <select value={competition} onChange={e => setCompetition(e.target.value)} className="w-full">
-                    {COMPETITIONS.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={competition}
+                      onChange={e => setCompetition(e.target.value)}
+                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                    >
+                      {COMPETITIONS.map(c => (
+                        <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
@@ -272,12 +282,19 @@ export default function Stats() {
                 <label className="form-label flex items-center gap-1.5">
                   <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
                 </label>
-                <select value={mvpPlayerId} onChange={e => setMvpPlayerId(e.target.value)} className="w-full">
-                  <option value="">Select MVP (Optional)</option>
-                  {players.map(p => (
-                    <option key={p.id} value={p.id}>{p.full_name} ({p.preferred_position})</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={mvpPlayerId}
+                    onChange={e => setMvpPlayerId(e.target.value)}
+                    className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                  >
+                    <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
+                    {sortedPlayers.map(p => (
+                      <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                </div>
               </div>
 
               {/* Player Events Table */}
@@ -299,7 +316,7 @@ export default function Stats() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-pitch-700/50">
-                      {players.map(p => {
+                      {sortedPlayers.map(p => {
                         const ev = playerEvents[p.id] || { goals: 0, assists: 0, yellow_card: false, red_card: false, clean_sheet: false, injured: false };
                         return (
                           <tr key={p.id} className={clsx('transition-colors', ev.injured ? 'opacity-40 bg-red-950/10' : 'hover:bg-pitch-800/40')}>
@@ -566,7 +583,7 @@ export default function Stats() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-pitch-700/50">
-                {players.map((player, i) => {
+                {sortedPlayers.map((player, i) => {
                   const colors = POSITION_COLORS[getPositionGroup(player.preferred_position)];
                   const isInjured = player.stats?.is_injured ?? false;
                   return (

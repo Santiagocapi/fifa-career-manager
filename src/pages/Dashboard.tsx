@@ -198,7 +198,7 @@ export default function Dashboard() {
             {/* All-time Top Scorer */}
             <div className="p-4 rounded-xl bg-pitch-900/80 border border-amber-500/20 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-                ⚽
+                <Crown size={18} />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">Top Goalscorer</p>
@@ -214,7 +214,7 @@ export default function Dashboard() {
             {/* All-time Top Assister */}
             <div className="p-4 rounded-xl bg-pitch-900/80 border border-electric-400/20 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-electric-400/10 border border-electric-400/20 flex items-center justify-center text-electric-400 flex-shrink-0">
-                🅰️
+                <Award size={18} />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-electric-400 font-semibold uppercase tracking-wider">Playmaker Icon</p>

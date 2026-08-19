@@ -75,19 +75,95 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
       return;
     }
 
-    // If we have an active season, fetch stats for all players in that season
+    // If we have an active season, fetch stats AND recalculate from match_events for 100% accuracy
     let statsMap: Record<string, SeasonStats> = {};
     if (seasonId) {
       const playerIds = playersData.map(p => p.id);
-      const { data: statsData } = await supabase
-        .from('season_stats')
-        .select('*')
-        .eq('season_id', seasonId)
-        .in('player_id', playerIds);  // IN operator: WHERE player_id IN (...)
+
+      // Fetch season_stats and matches for this season concurrently
+      const [{ data: statsData }, { data: seasonMatches }] = await Promise.all([
+        supabase
+          .from('season_stats')
+          .select('*')
+          .eq('season_id', seasonId)
+          .in('player_id', playerIds),
+        supabase
+          .from('matches')
+          .select('id')
+          .eq('season_id', seasonId),
+      ]);
 
       if (statsData) {
-        // Convert array to a map (dictionary) for O(1) lookup by player_id
         statsMap = Object.fromEntries(statsData.map(s => [s.player_id, s]));
+      }
+
+      // Re-sync with actual match_events truth if matches exist
+      if (seasonMatches && seasonMatches.length > 0) {
+        const matchIds = seasonMatches.map(m => m.id);
+        const { data: allEvents } = await supabase
+          .from('match_events')
+          .select('*')
+          .in('match_id', matchIds);
+
+        if (allEvents) {
+          // Aggregate real totals from match_events per player
+          const agg: Record<string, { goals: number; assists: number; yellow_cards: number; red_cards: number; clean_sheets: number; matches_played: number }> = {};
+          for (const ev of allEvents) {
+            if (!agg[ev.player_id]) {
+              agg[ev.player_id] = { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0, clean_sheets: 0, matches_played: 0 };
+            }
+            const item = agg[ev.player_id];
+            item.goals += ev.goals || 0;
+            item.assists += ev.assists || 0;
+            item.yellow_cards += ev.yellow_card ? 1 : 0;
+            item.red_cards += ev.red_card ? 1 : 0;
+            item.clean_sheets += ev.clean_sheet ? 1 : 0;
+            item.matches_played += ev.injured ? 0 : 1;
+          }
+
+          // Check for discrepancies and update in memory + Supabase
+          const syncUpdates: Promise<any>[] = [];
+          for (const pId of playerIds) {
+            const current = statsMap[pId];
+            const real = agg[pId] || { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0, clean_sheets: 0, matches_played: 0 };
+            if (current) {
+              if (
+                current.goals !== real.goals ||
+                current.assists !== real.assists ||
+                current.matches_played !== real.matches_played ||
+                current.yellow_cards !== real.yellow_cards ||
+                current.red_cards !== real.red_cards ||
+                current.clean_sheets !== real.clean_sheets
+              ) {
+                // Update in memory
+                statsMap[pId] = {
+                  ...current,
+                  goals: real.goals,
+                  assists: real.assists,
+                  matches_played: real.matches_played,
+                  yellow_cards: real.yellow_cards,
+                  red_cards: real.red_cards,
+                  clean_sheets: real.clean_sheets,
+                };
+                // Sync back to Supabase asynchronously
+                syncUpdates.push(
+                  supabase.from('season_stats').update({
+                    goals: real.goals,
+                    assists: real.assists,
+                    matches_played: real.matches_played,
+                    yellow_cards: real.yellow_cards,
+                    red_cards: real.red_cards,
+                    clean_sheets: real.clean_sheets,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', current.id)
+                );
+              }
+            }
+          }
+          if (syncUpdates.length > 0) {
+            Promise.all(syncUpdates).catch(console.error);
+          }
+        }
       }
     }
 

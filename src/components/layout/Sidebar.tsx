@@ -61,15 +61,14 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto">
+      <nav className={clsx('flex-1 px-3 py-4 flex flex-col gap-1', sidebarCollapsed ? 'overflow-visible' : 'overflow-y-auto')}>
         {/* Career selector link */}
         <NavLink
           to="/careers"
           className={({ isActive }) => clsx(
             isActive ? 'nav-item-active' : 'nav-item',
-            sidebarCollapsed && 'justify-center px-0'
+            sidebarCollapsed && 'justify-center px-0 relative group'
           )}
-          title="Switch Career"
         >
           {({ isActive }) => (
             <>
@@ -84,6 +83,12 @@ export default function Sidebar() {
               {!sidebarCollapsed && (
                 <span className="text-xs text-white/50">Switch Career</span>
               )}
+              {sidebarCollapsed && (
+                <div className="absolute left-full ml-3.5 px-3 py-1.5 bg-pitch-900/95 backdrop-blur-md text-white text-xs font-bold rounded-xl border border-neon-400/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 flex items-center gap-1.5 translate-x-1 group-hover:translate-x-0">
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-pitch-900 border-l border-b border-neon-400/30 rotate-45" />
+                  <span>Switch Career</span>
+                </div>
+              )}
             </>
           )}
         </NavLink>
@@ -97,12 +102,17 @@ export default function Sidebar() {
             to={to}
             className={({ isActive }) => clsx(
               isActive ? 'nav-item-active' : 'nav-item',
-              sidebarCollapsed && 'justify-center px-0'
+              sidebarCollapsed && 'justify-center px-0 relative group'
             )}
-            title={label}
           >
             <Icon size={18} className="flex-shrink-0" />
             {!sidebarCollapsed && <span>{label}</span>}
+            {sidebarCollapsed && (
+              <div className="absolute left-full ml-3.5 px-3 py-1.5 bg-pitch-900/95 backdrop-blur-md text-white text-xs font-bold rounded-xl border border-neon-400/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 flex items-center gap-1.5 translate-x-1 group-hover:translate-x-0">
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-pitch-900 border-l border-b border-neon-400/30 rotate-45" />
+                <span>{label}</span>
+              </div>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -113,24 +123,36 @@ export default function Sidebar() {
           onClick={handleSignOut}
           className={clsx(
             'nav-item text-red-400/70 hover:text-red-400 hover:bg-red-500/10 w-full',
-            sidebarCollapsed && 'justify-center px-0'
+            sidebarCollapsed && 'justify-center px-0 relative group'
           )}
-          title="Sign Out"
         >
           <LogOut size={18} />
           {!sidebarCollapsed && <span>Sign Out</span>}
+          {sidebarCollapsed && (
+            <div className="absolute left-full ml-3.5 px-3 py-1.5 bg-pitch-900/95 backdrop-blur-md text-red-400 text-xs font-bold rounded-xl border border-red-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 flex items-center gap-1.5 translate-x-1 group-hover:translate-x-0">
+              <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-pitch-900 border-l border-b border-red-500/30 rotate-45" />
+              <span>Sign Out</span>
+            </div>
+          )}
         </button>
 
         <button
           onClick={toggleSidebar}
           className={clsx(
             'nav-item w-full',
-            sidebarCollapsed && 'justify-center px-0'
+            sidebarCollapsed && 'justify-center px-0 relative group'
           )}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {sidebarCollapsed
-            ? <ChevronRight size={18} />
+            ? (
+              <>
+                <ChevronRight size={18} />
+                <div className="absolute left-full ml-3.5 px-3 py-1.5 bg-pitch-900/95 backdrop-blur-md text-white text-xs font-bold rounded-xl border border-neon-400/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 flex items-center gap-1.5 translate-x-1 group-hover:translate-x-0">
+                  <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-pitch-900 border-l border-b border-neon-400/30 rotate-45" />
+                  <span>Expand Sidebar</span>
+                </div>
+              </>
+            )
             : <><ChevronLeft size={18} /><span>Collapse</span></>
           }
         </button>

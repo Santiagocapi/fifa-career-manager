@@ -6,8 +6,9 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag } from '../lib/constants';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save } from 'lucide-react';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag, getCountryCode } from '../lib/constants';
+import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save, ChevronDown } from 'lucide-react';
+
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
 import type { CreatePlayerDto, PlayerPosition, PlayerWithStats } from '../types/database';
@@ -185,12 +186,18 @@ export default function Squad() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Position *</label>
-                  <select {...register('preferred_position', { required: 'Required' })} className="w-full">
-                    <option value="">Select position</option>
-                    {POSITIONS.map(p => (
-                      <option key={p.value} value={p.value}>{p.label} ({p.value})</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      {...register('preferred_position', { required: 'Required' })}
+                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                    >
+                      <option value="" className="bg-pitch-900 text-white/50">Select position</option>
+                      {POSITIONS.map(p => (
+                        <option key={p.value} value={p.value} className="bg-pitch-900 text-white">{p.label} ({p.value})</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                  </div>
                   {errors.preferred_position && <p className="form-error">{errors.preferred_position.message}</p>}
                 </div>
                 <div className="form-group">
@@ -262,15 +269,15 @@ export default function Squad() {
         let lastGroup = '';
         let animIdx = 0;
 
-        for (const player of sorted) {
-          const group = getPositionGroup(player.preferred_position);
-          const colors = POSITION_COLORS[group];
-          const initials = getPlayerInitials(player.full_name);
-          const [gradStart, gradEnd] = getPlayerAvatarGradient(player.full_name);
-          const ovrGrowth = player.stats
-            ? (player.stats.ovr_end ?? player.stats.ovr_start ?? 0) - (player.stats.ovr_start ?? 0)
-            : null;
-          const flag = getCountryFlag(player.nationality);
+          for (const player of sorted) {
+            const group = getPositionGroup(player.preferred_position);
+            const colors = POSITION_COLORS[group];
+            const initials = getPlayerInitials(player.full_name);
+            const [gradStart, gradEnd] = getPlayerAvatarGradient(player.full_name);
+            const ovrGrowth = player.stats
+              ? (player.stats.ovr_end ?? player.stats.ovr_start ?? 0) - (player.stats.ovr_start ?? 0)
+              : null;
+            const countryCode = getCountryCode(player.nationality);
 
           // Insert section header when group changes
           if (showSectionHeaders && group !== lastGroup) {
@@ -322,8 +329,17 @@ export default function Squad() {
                     {player.age && (
                       <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
                     )}
-                    {flag && player.nationality && (
-                      <span className="text-sm" title={player.nationality}>{flag}</span>
+                    {player.nationality && (
+                      countryCode ? (
+                        <img
+                          src={`https://flagcdn.com/w40/${countryCode}.png`}
+                          alt={player.nationality}
+                          title={player.nationality}
+                          className="w-4 h-3 object-cover rounded-[2px] inline-block shadow-sm flex-shrink-0"
+                        />
+                      ) : (
+                        <span className="text-[11px] text-white/60 font-medium">{player.nationality}</span>
+                      )
                     )}
                     {player.joined_year && (
                       <span className="text-[10px] text-neon-400/80 bg-neon-400/10 px-1.5 py-0.5 rounded font-mono">

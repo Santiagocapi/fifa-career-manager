@@ -8,8 +8,9 @@ import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useSeasons } from '../hooks/useSeasons';
 import { useTrophies } from '../hooks/useTrophies';
+import { useMatches } from '../hooks/useMatches';
 import { formatValue } from '../lib/constants';
-import { Users, Trophy, TrendingUp, Star, Plus, Calendar, Crown, Award, Heart, Loader2 } from 'lucide-react';
+import { Users, Trophy, TrendingUp, Star, Plus, Calendar, Crown, Award, Heart, Loader2, Swords } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -20,9 +21,11 @@ export default function Dashboard() {
   const { players, loading: playersLoading } = usePlayers(activeCareer?.id ?? null, activeSeason?.id ?? null);
   const { seasons, createSeason, loading: seasonsLoading } = useSeasons(activeCareer?.id ?? null);
   const { trophies } = useTrophies(activeSeason?.id ?? null);
+  const { matches } = useMatches(activeSeason?.id ?? null, activeCareer?.id ?? null);
   const navigate = useNavigate();
   const [showSeasonForm, setShowSeasonForm] = useState(false);
   const { register, handleSubmit, reset } = useForm<{ year_label: string }>();
+
 
   if (!activeCareer) {
     return (
@@ -109,8 +112,9 @@ export default function Dashboard() {
       )}
 
       {/* Overview Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
+          { label: 'Matches Played', value: matches.length, icon: Swords, color: 'text-purple-400' },
           { label: 'Squad Size', value: players.length, icon: Users, color: 'text-blue-400' },
           { label: 'Season Goals', value: totalGoals, icon: Star, color: 'text-neon-400' },
           { label: 'Season Assists', value: totalAssists, icon: TrendingUp, color: 'text-electric-400' },
@@ -194,7 +198,7 @@ export default function Dashboard() {
             {/* All-time Top Scorer */}
             <div className="p-4 rounded-xl bg-pitch-900/80 border border-amber-500/20 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-                ⚽
+                <Crown size={18} />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">Top Goalscorer</p>
@@ -210,7 +214,7 @@ export default function Dashboard() {
             {/* All-time Top Assister */}
             <div className="p-4 rounded-xl bg-pitch-900/80 border border-electric-400/20 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-electric-400/10 border border-electric-400/20 flex items-center justify-center text-electric-400 flex-shrink-0">
-                🅰️
+                <Award size={18} />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-electric-400 font-semibold uppercase tracking-wider">Playmaker Icon</p>

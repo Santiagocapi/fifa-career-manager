@@ -6,8 +6,9 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars } from '../lib/constants';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save } from 'lucide-react';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag, getCountryCode } from '../lib/constants';
+import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save, ChevronDown } from 'lucide-react';
+
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
 import type { CreatePlayerDto, PlayerPosition, PlayerWithStats } from '../types/database';
@@ -185,12 +186,18 @@ export default function Squad() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Position *</label>
-                  <select {...register('preferred_position', { required: 'Required' })} className="w-full">
-                    <option value="">Select position</option>
-                    {POSITIONS.map(p => (
-                      <option key={p.value} value={p.value}>{p.label} ({p.value})</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      {...register('preferred_position', { required: 'Required' })}
+                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                    >
+                      <option value="" className="bg-pitch-900 text-white/50">Select position</option>
+                      {POSITIONS.map(p => (
+                        <option key={p.value} value={p.value} className="bg-pitch-900 text-white">{p.label} ({p.value})</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                  </div>
                   {errors.preferred_position && <p className="form-error">{errors.preferred_position.message}</p>}
                 </div>
                 <div className="form-group">
@@ -232,16 +239,37 @@ export default function Squad() {
         </div>
       )}
 
-      {/* Player Grid */}
+      {/* Player Grid — grouped by position (GK → DEF → MID → FWD) */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="skeleton h-36 rounded-2xl" />
           ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredPlayers.map((player, i) => {
+      ) : (() => {
+        // Sort players by position group order, then by position code within group
+        const GROUP_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+        const GROUP_LABELS: Record<string, string> = {
+          GK: 'Goalkeepers',
+          DEF: 'Defenders',
+          MID: 'Midfielders',
+          FWD: 'Forwards',
+        };
+
+        const sorted = [...filteredPlayers].sort((a, b) => {
+          const ga = GROUP_ORDER[getPositionGroup(a.preferred_position)] ?? 9;
+          const gb = GROUP_ORDER[getPositionGroup(b.preferred_position)] ?? 9;
+          if (ga !== gb) return ga - gb;
+          return a.preferred_position.localeCompare(b.preferred_position);
+        });
+
+        // Group players — only insert section headers when no filter is active
+        const showSectionHeaders = !filterGroup;
+        const rendered: JSX.Element[] = [];
+        let lastGroup = '';
+        let animIdx = 0;
+
+          for (const player of sorted) {
             const group = getPositionGroup(player.preferred_position);
             const colors = POSITION_COLORS[group];
             const initials = getPlayerInitials(player.full_name);
@@ -249,116 +277,152 @@ export default function Squad() {
             const ovrGrowth = player.stats
               ? (player.stats.ovr_end ?? player.stats.ovr_start ?? 0) - (player.stats.ovr_start ?? 0)
               : null;
+            const countryCode = getCountryCode(player.nationality);
 
-            return (
-              <div
-                key={player.id}
-                className="card p-4 flex flex-col gap-3 animate-fade-in group hover:border-white/10 transition-all relative"
-                style={{ animationDelay: `${i * 30}ms` }}
+          // Insert section header when group changes
+          if (showSectionHeaders && group !== lastGroup) {
+            lastGroup = group;
+            const groupCount = sorted.filter(p => getPositionGroup(p.preferred_position) === group).length;
+            rendered.push(
+              <div key={`header-${group}`} className="col-span-full flex items-center gap-3 mt-2 first:mt-0">
+                <span className={clsx('badge text-xs font-bold', colors.badge)}>
+                  {group}
+                </span>
+                <span className="text-sm font-semibold text-white/60">{GROUP_LABELS[group]}</span>
+                <span className="text-xs text-white/30">({groupCount})</span>
+                <div className="flex-1 h-px bg-pitch-700" />
+              </div>
+            );
+          }
+
+          rendered.push(
+            <div
+              key={player.id}
+              className="card p-4 flex flex-col gap-3 animate-fade-in group hover:border-white/10 transition-all relative"
+              style={{ animationDelay: `${animIdx++ * 30}ms` }}
+            >
+              {/* Edit Button */}
+              <button
+                onClick={() => openEditForm(player)}
+                className="absolute top-3 right-3 btn-ghost p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                title="Edit Player"
               >
-                {/* Edit Button */}
-                <button
-                  onClick={() => openEditForm(player)}
-                  className="absolute top-3 right-3 btn-ghost p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  title="Edit Player"
+                <Edit2 size={14} />
+              </button>
+
+              {/* Card top: avatar + position + OVR */}
+              <div className="flex items-start gap-3 pr-6">
+                {/* Dynamic Avatar */}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 border border-white/10"
+                  style={{ background: `linear-gradient(135deg, ${gradStart}40, ${gradEnd}40)` }}
                 >
-                  <Edit2 size={14} />
-                </button>
-
-                {/* Card top: avatar + position + OVR */}
-                <div className="flex items-start gap-3 pr-6">
-                  {/* Dynamic Avatar */}
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0 border border-white/10"
-                    style={{ background: `linear-gradient(135deg, ${gradStart}40, ${gradEnd}40)` }}
-                  >
-                    {initials}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-white truncate">{player.full_name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className={clsx('badge text-[10px]', colors.badge)}>
-                        {player.preferred_position}
-                      </span>
-                      {player.age && (
-                        <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
-                      )}
-                      {player.joined_year && (
-                        <span className="text-[10px] text-neon-400/80 bg-neon-400/10 px-1.5 py-0.5 rounded font-mono">
-                          Since {player.joined_year}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* OVR */}
-                  {player.stats?.ovr_start && (
-                    <div className="flex flex-col items-center">
-                      <span className="ovr-badge text-sm">
-                        {player.stats.ovr_end ?? player.stats.ovr_start}
-                      </span>
-                      {ovrGrowth !== null && ovrGrowth !== 0 && (
-                        <span className={clsx(
-                          'text-[10px] font-bold flex items-center gap-0.5 mt-0.5',
-                          ovrGrowth > 0 ? 'text-neon-400' : 'text-red-400'
-                        )}>
-                          {ovrGrowth > 0
-                            ? <TrendingUp size={10} />
-                            : <TrendingDown size={10} />
-                          }
-                          {ovrGrowth > 0 ? '+' : ''}{ovrGrowth}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {initials}
                 </div>
 
-                {/* Stats row */}
-                {player.stats && (
-                  <div className="grid grid-cols-4 gap-1 pt-2 border-t border-pitch-700">
-                    {[
-                      { label: 'G', value: player.stats.goals },
-                      { label: 'A', value: player.stats.assists },
-                      { label: 'MP', value: player.stats.matches_played },
-                      { label: 'YC', value: player.stats.yellow_cards },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="text-center">
-                        <p className="text-xs font-bold text-white">{value}</p>
-                        <p className="text-[10px] text-white/40">{label}</p>
-                      </div>
-                    ))}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-white truncate">{player.full_name}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className={clsx('badge text-[10px]', colors.badge)}>
+                      {player.preferred_position}
+                    </span>
+                    {player.age && (
+                      <span className="text-xs text-white/70 font-medium">{player.age} yrs</span>
+                    )}
+                    {player.nationality && (
+                      countryCode ? (
+                        <img
+                          src={`https://flagcdn.com/w40/${countryCode}.png`}
+                          alt={player.nationality}
+                          title={player.nationality}
+                          className="w-4 h-3 object-cover rounded-[2px] inline-block shadow-sm flex-shrink-0"
+                        />
+                      ) : (
+                        <span className="text-[11px] text-white/60 font-medium">{player.nationality}</span>
+                      )
+                    )}
+                    {player.joined_year && (
+                      <span className="text-[10px] text-neon-400/80 bg-neon-400/10 px-1.5 py-0.5 rounded font-mono">
+                        Since {player.joined_year}
+                      </span>
+                    )}
                   </div>
-                )}
+                </div>
 
-                {/* Value & Wage */}
-                {(player.stats?.market_value_start || player.stats?.salary) && (
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-pitch-700">
-                    <div>
-                      <span className="text-white/40 text-[10px] uppercase tracking-wider block">Valuation</span>
-                      <span className="text-white/80 font-medium">
-                        {formatValue(player.stats?.market_value_end ?? player.stats?.market_value_start)}
+                {/* OVR */}
+                {player.stats?.ovr_start && (
+                  <div className="flex flex-col items-center">
+                    <span className="ovr-badge text-sm">
+                      {player.stats.ovr_end ?? player.stats.ovr_start}
+                    </span>
+                    {ovrGrowth !== null && ovrGrowth !== 0 && (
+                      <span className={clsx(
+                        'text-[10px] font-bold flex items-center gap-0.5 mt-0.5',
+                        ovrGrowth > 0 ? 'text-neon-400' : 'text-red-400'
+                      )}>
+                        {ovrGrowth > 0
+                          ? <TrendingUp size={10} />
+                          : <TrendingDown size={10} />
+                        }
+                        {ovrGrowth > 0 ? '+' : ''}{ovrGrowth}
                       </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-white/40 text-[10px] uppercase tracking-wider block">Weekly Wage</span>
-                      <span className="text-neon-400 font-medium">
-                        {formatWage(player.stats?.salary)}
-                      </span>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
-            );
-          })}
 
-          {filteredPlayers.length === 0 && (
-            <div className="col-span-full card p-12 text-center">
+              {/* Stats row */}
+              {player.stats && (
+                <div className="grid grid-cols-4 gap-1 pt-2 border-t border-pitch-700">
+                  {[
+                    { label: 'G', value: player.stats.goals },
+                    { label: 'A', value: player.stats.assists },
+                    { label: 'MP', value: player.stats.matches_played },
+                    { label: 'YC', value: player.stats.yellow_cards },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="text-center">
+                      <p className="text-xs font-bold text-white">{value}</p>
+                      <p className="text-[10px] text-white/40">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Value & Wage */}
+              {(player.stats?.market_value_start || player.stats?.salary) && (
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-pitch-700">
+                  <div>
+                    <span className="text-white/40 text-[10px] uppercase tracking-wider block">Valuation</span>
+                    <span className="text-white/80 font-medium">
+                      {formatValue(player.stats?.market_value_end ?? player.stats?.market_value_start)}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-white/40 text-[10px] uppercase tracking-wider block">Weekly Wage</span>
+                    <span className="text-neon-400 font-medium">
+                      {formatWage(player.stats?.salary)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (sorted.length === 0) {
+          rendered.push(
+            <div key="empty" className="col-span-full card p-12 text-center">
               <p className="text-white/30">No players found</p>
             </div>
-          )}
-        </div>
-      )}
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {rendered}
+          </div>
+        );
+      })()}
     </div>
   );
 }

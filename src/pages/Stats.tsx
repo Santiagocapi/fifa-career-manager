@@ -4,15 +4,15 @@
 // Score, MVP, Player Events), Head-to-Head (H2H) records, and Leaderboards.
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
-import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition } from '../lib/constants';
-import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown } from 'lucide-react';
+import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode } from '../lib/constants';
+import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
-import type { MatchWithDetails } from '../types/database';
+import type { MatchWithDetails, PlayerWithStats } from '../types/database';
 
 interface PlayerMatchPerformance {
   player_id: string;
@@ -40,6 +40,25 @@ export default function Stats() {
 
   // Sort players by position group (GK -> DEF -> MID -> FWD)
   const sortedPlayers = sortPlayersByPosition(players);
+
+  // Top 5 MVPs of the active season
+  const topMVPs = useMemo(() => {
+    const mvpCounts: Record<string, { player: PlayerWithStats; count: number }> = {};
+    matches.forEach(m => {
+      if (m.mvp_player_id) {
+        const player = players.find(p => p.id === m.mvp_player_id);
+        if (player) {
+          if (!mvpCounts[m.mvp_player_id]) {
+            mvpCounts[m.mvp_player_id] = { player, count: 0 };
+          }
+          mvpCounts[m.mvp_player_id].count += 1;
+        }
+      }
+    });
+    return Object.values(mvpCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [matches, players]);
 
 
   const [logging, setLogging] = useState(false);
@@ -422,21 +441,21 @@ export default function Stats() {
         </div>
       )}
 
-      {/* Two-Column Grid: H2H Records + Match History Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+      {/* Three-Column Grid: H2H Records + Match History Feed + Top 5 MVPs */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
 
         {/* Head-to-Head (H2H) Records Table */}
-        <div className="card p-4 sm:p-5 min-w-0">
-          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
+          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
             <Swords size={16} className="text-neon-400" />
             Head-to-Head (H2H) vs Opponents
           </h3>
           {h2hRecords.length === 0 ? (
-            <p className="text-white/30 text-sm py-4 text-center">No match history logged yet</p>
+            <p className="text-white/30 text-sm py-4 text-center my-auto">No match history logged yet</p>
           ) : (
-            <div className="overflow-x-auto w-full">
+            <div className="overflow-y-auto overflow-x-auto w-full flex-1 pr-1">
               <table className="w-full text-xs">
-                <thead>
+                <thead className="sticky top-0 bg-[#0f172a] z-10">
                   <tr className="border-b border-pitch-700">
                     <th className="pb-2 text-left text-white/40">Opponent</th>
                     <th className="pb-2 text-center text-white/40">P</th>
@@ -466,15 +485,15 @@ export default function Stats() {
         </div>
 
         {/* Recent Matches Log Feed */}
-        <div className="card p-4 sm:p-5 min-w-0">
-          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
+          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
             <Calendar size={16} className="text-electric-400" />
             Recent Match History
           </h3>
           {matches.length === 0 ? (
-            <p className="text-white/30 text-sm py-4 text-center">No matches recorded this season</p>
+            <p className="text-white/30 text-sm py-4 text-center my-auto">No matches recorded this season</p>
           ) : (
-            <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-1">
               {matches.map(m => (
                 <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-pitch-700 group hover:border-white/10 transition-all gap-2">
                   <div className="flex items-center gap-3 min-w-0">
@@ -503,23 +522,23 @@ export default function Stats() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className="font-mono text-sm sm:text-base font-black text-white">
                       {m.team_score} - {m.opponent_score}
                     </span>
                     <button
                       onClick={() => handleOpenEditModal(m)}
-                      className="btn-ghost p-1 text-xs md:opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="btn-ghost p-1.5 text-xs text-white/60 hover:text-white"
                       title="Edit Match"
                     >
-                      <Edit2 size={13} />
+                      <Edit2 size={14} />
                     </button>
                     <button
                       onClick={() => handleDeleteMatch(m.id)}
-                      className="btn-danger p-1 text-xs md:opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="btn-danger p-1.5 text-xs"
                       title="Delete Match"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -527,6 +546,63 @@ export default function Stats() {
             </div>
           )}
         </div>
+
+        {/* Top 5 MVPs of the Season */}
+        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
+          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
+            <Award size={16} className="text-amber-400" />
+            Top 5 MVPs of the Season
+          </h3>
+          {topMVPs.length === 0 ? (
+            <p className="text-white/30 text-sm py-4 text-center my-auto">No MVPs selected in matches yet</p>
+          ) : (
+            <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 pr-1">
+              {topMVPs.map(({ player, count }, idx) => {
+                const group = getPositionGroup(player.preferred_position);
+                const colors = POSITION_COLORS[group];
+                const countryCode = getCountryCode(player.nationality);
+                return (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-amber-400/20 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={clsx(
+                        'w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs flex-shrink-0',
+                        idx === 0 ? 'bg-amber-400 text-slate-950 shadow-md' : 'bg-pitch-700 text-white/70'
+                      )}>
+                        #{idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-bold text-white text-sm truncate">{player.full_name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span translate="no" className={clsx('badge text-[9px] font-bold px-1.5 py-0.2 rounded uppercase', colors.badge)}>
+                            {player.preferred_position}
+                          </span>
+                          {countryCode && (
+                            <img
+                              src={`https://flagcdn.com/w40/${countryCode}.png`}
+                              alt={player.nationality ?? ''}
+                              className="w-3.5 h-2.5 object-cover rounded-[2px] shadow-sm flex-shrink-0"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-xl flex-shrink-0">
+                      <Star size={12} className="text-amber-400 fill-amber-400" />
+                      <span className="font-mono font-black text-amber-300 text-xs">
+                        {count} {count === 1 ? 'MVP' : 'MVPs'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Goals + Assists Chart */}

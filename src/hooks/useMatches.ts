@@ -8,6 +8,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Match, MatchEvent, MatchWithDetails, CreateMatchDto, CreateMatchEventDto, H2HRecord, MatchResult } from '../types/database';
 
+interface LogMatchPlayerEvent {
+  player_id: string;
+  played?: boolean;
+  substituted_off?: boolean;
+  substituted_in?: boolean;
+  replaced_player_id?: string | null;
+  goals: number;
+  assists: number;
+  yellow_card: boolean;
+  red_card: boolean;
+  clean_sheet: boolean;
+  injured: boolean;
+}
+
 interface LogMatchPayload {
   opponent: string;
   competition?: string;
@@ -15,15 +29,7 @@ interface LogMatchPayload {
   opponent_score: number;
   mvp_player_id: string | null;
   match_date?: string;
-  playerEvents: {
-    player_id: string;
-    goals: number;
-    assists: number;
-    yellow_card: boolean;
-    red_card: boolean;
-    clean_sheet: boolean;
-    injured: boolean;
-  }[];
+  playerEvents: LogMatchPlayerEvent[];
 }
 
 interface UseMatchesReturn {
@@ -175,7 +181,8 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
       const current = statsMap[e.player_id];
       if (!current) return Promise.resolve();
 
-      const mpDelta = (e.injured ? 0 : 1) * multiplier;
+      const didPlay = e.played ?? (e.goals > 0 || e.assists > 0 || e.clean_sheet || e.yellow_card || e.red_card);
+      const mpDelta = (didPlay && !e.injured ? 1 : 0) * multiplier;
       const gDelta = (e.goals || 0) * multiplier;
       const aDelta = (e.assists || 0) * multiplier;
       const ycDelta = (e.yellow_card ? 1 : 0) * multiplier;

@@ -8,14 +8,20 @@ import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
+import { useTacticsStore } from '../store/useTacticsStore';
 import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode } from '../lib/constants';
-import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown, Award } from 'lucide-react';
+import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown, Award, ArrowLeftRight, UserCheck, UserPlus, ShieldCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
 import type { MatchWithDetails, PlayerWithStats } from '../types/database';
 
 interface PlayerMatchPerformance {
   player_id: string;
+  played: boolean;
+  is_starter: boolean;
+  substituted_off: boolean;
+  substituted_in: boolean;
+  replaced_player_id: string | null;
   goals: number;
   assists: number;
   yellow_card: boolean;
@@ -73,6 +79,32 @@ export default function Stats() {
   const [mvpPlayerId, setMvpPlayerId] = useState<string>('');
   const [playerEvents, setPlayerEvents] = useState<Record<string, PlayerMatchPerformance>>({});
 
+  const recalculateCleanSheets = (scoreAgainst: number, currentEvents: Record<string, PlayerMatchPerformance>) => {
+    const updated = { ...currentEvents };
+    Object.keys(updated).forEach(pId => {
+      const p = players.find(x => x.id === pId);
+      const ev = updated[pId];
+      if (!p || !ev) return;
+
+      const group = getPositionGroup(p.preferred_position);
+      const isDefOrGk = group === 'GK' || group === 'DEF';
+
+      if (scoreAgainst === 0 && isDefOrGk) {
+        // Automatic clean sheet credited to GK & DEF who played and were NOT subbed off, OR who entered as subs
+        if (ev.played && !ev.substituted_off) {
+          ev.clean_sheet = true;
+        } else if (ev.substituted_in) {
+          ev.clean_sheet = true;
+        } else {
+          ev.clean_sheet = false;
+        }
+      } else {
+        ev.clean_sheet = false;
+      }
+    });
+    return updated;
+  };
+
   const handleOpenAddModal = () => {
     setEditingMatch(null);
     setOpponent('');
@@ -80,11 +112,27 @@ export default function Stats() {
     setTeamScore(0);
     setOpponentScore(0);
     setMvpPlayerId('');
-    // Initialize event state — pre-mark injured players from their persistent is_injured flag
+
+    // Fetch Starting XI player IDs from tactics store for active season
+    const seasonId = activeSeason?.id ?? 'default';
+    const lineupIds = useTacticsStore.getState().lineups[seasonId] ?? [];
+    const starterSet = new Set(lineupIds.filter(Boolean) as string[]);
+
+    // Fallback: pick top 11 by position fit if tactics lineup is empty
+    if (starterSet.size === 0 && players.length > 0) {
+      sortedPlayers.slice(0, 11).forEach(p => starterSet.add(p.id));
+    }
+
     const initialEvents: Record<string, PlayerMatchPerformance> = {};
     players.forEach(p => {
+      const isStarter = starterSet.has(p.id);
       initialEvents[p.id] = {
         player_id: p.id,
+        played: isStarter,
+        is_starter: isStarter,
+        substituted_off: false,
+        substituted_in: false,
+        replaced_player_id: null,
         goals: 0,
         assists: 0,
         yellow_card: false,
@@ -93,7 +141,9 @@ export default function Stats() {
         injured: p.stats?.is_injured ?? false,
       };
     });
-    setPlayerEvents(initialEvents);
+
+    const withCleanSheets = recalculateCleanSheets(0, initialEvents);
+    setPlayerEvents(withCleanSheets);
     setLogging(true);
   };
 
@@ -105,12 +155,23 @@ export default function Stats() {
     setOpponentScore(match.opponent_score);
     setMvpPlayerId(match.mvp_player_id || '');
 
-    // Populate events map from existing match events
+    const seasonId = activeSeason?.id ?? 'default';
+    const lineupIds = useTacticsStore.getState().lineups[seasonId] ?? [];
+    const starterSet = new Set(lineupIds.filter(Boolean) as string[]);
+
     const eventsMap: Record<string, PlayerMatchPerformance> = {};
     players.forEach(p => {
       const existingEv = match.events.find(e => e.player_id === p.id);
+      const isStarter = starterSet.has(p.id);
+      const didPlay = existingEv ? true : isStarter;
+
       eventsMap[p.id] = {
         player_id: p.id,
+        played: didPlay,
+        is_starter: isStarter,
+        substituted_off: false,
+        substituted_in: false,
+        replaced_player_id: null,
         goals: existingEv?.goals || 0,
         assists: existingEv?.assists || 0,
         yellow_card: existingEv?.yellow_card || false,
@@ -119,8 +180,49 @@ export default function Stats() {
         injured: existingEv?.injured || false,
       };
     });
+
     setPlayerEvents(eventsMap);
     setLogging(true);
+  };
+
+  const handleOpponentScoreChange = (newScore: number) => {
+    setOpponentScore(newScore);
+    setPlayerEvents(prev => recalculateCleanSheets(newScore, prev));
+  };
+
+  const handleStarterSubstitutedOff = (starterId: string, subBenchPlayerId: string) => {
+    setPlayerEvents(prev => {
+      const updated = { ...prev };
+      const starterEv = updated[starterId];
+      if (!starterEv) return prev;
+
+      // If previous sub was selected, reset that sub
+      if (starterEv.replaced_player_id && updated[starterEv.replaced_player_id]) {
+        const prevSubEv = updated[starterEv.replaced_player_id];
+        prevSubEv.played = false;
+        prevSubEv.substituted_in = false;
+        prevSubEv.replaced_player_id = null;
+      }
+
+      if (!subBenchPlayerId) {
+        // Clear substitution
+        starterEv.substituted_off = false;
+        starterEv.replaced_player_id = null;
+      } else {
+        // Set substitution
+        starterEv.substituted_off = true;
+        starterEv.replaced_player_id = subBenchPlayerId;
+
+        if (updated[subBenchPlayerId]) {
+          const newSubEv = updated[subBenchPlayerId];
+          newSubEv.played = true;
+          newSubEv.substituted_in = true;
+          newSubEv.replaced_player_id = starterId;
+        }
+      }
+
+      return recalculateCleanSheets(opponentScore, updated);
+    });
   };
 
   const updatePlayerEvent = (playerId: string, field: keyof PlayerMatchPerformance, value: any) => {
@@ -268,26 +370,19 @@ export default function Stats() {
                     </div>
                   </div>
 
-                  {/* VS divider */}
-                  <div className="flex flex-col items-center gap-1 pb-1">
-                    <span className="text-white/20 text-sm font-bold">—</span>
-                    <span className="text-white/40 font-black text-lg">vs</span>
-                    <span className="text-white/20 text-sm font-bold">—</span>
-                  </div>
-
                   {/* Opponent score */}
                   <div className="flex flex-col items-center gap-1 flex-1">
                     <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
                     <div className="flex items-center gap-3">
                       <button type="button"
-                        onClick={() => setOpponentScore(s => Math.max(0, s - 1))}
+                        onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
                         disabled={opponentScore <= 0}
                         className="w-10 h-10 rounded-xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-lg font-bold">
                         <Minus size={16} />
                       </button>
                       <span className="text-4xl font-black text-red-400 w-10 text-center tabular-nums">{opponentScore}</span>
                       <button type="button"
-                        onClick={() => setOpponentScore(s => s + 1)}
+                        onClick={() => handleOpponentScoreChange(opponentScore + 1)}
                         className="w-10 h-10 rounded-xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-lg font-bold">
                         <Plus size={16} />
                       </button>
@@ -316,38 +411,147 @@ export default function Stats() {
                 </div>
               </div>
 
-              {/* Player Events Table */}
+              {/* Player Events Table: Starters & Substitutes */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-white text-sm">Player Performances in Match</h4>
-                  <span className="text-[11px] text-white/40">🚑 Injured players are pre-marked from squad status</span>
+                  <div>
+                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                      <UserCheck size={16} className="text-emerald-400" />
+                      Player Match Performances & Substitutions
+                    </h4>
+                    <p className="text-[11px] text-white/50 mt-0.5">
+                      Starting XI automatically counts toward Matches Played. Mark substitutes who entered the match.
+                    </p>
+                  </div>
+                  {opponentScore === 0 && (
+                    <span className="badge bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] uppercase font-bold flex items-center gap-1">
+                      <ShieldCheck size={12} /> Auto Clean Sheets (0 Conceded)
+                    </span>
+                  )}
                 </div>
-                <div className="border border-pitch-700 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+
+                <div className="border border-pitch-700 rounded-2xl overflow-hidden max-h-[340px] overflow-y-auto">
                   <table className="w-full text-xs">
-                    <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700">
+                    <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700 z-10">
                       <tr>
-                        <th className="p-2 text-left text-white/50">Player</th>
-                        <th className="p-2 text-center text-white/50">⚽ G</th>
-                        <th className="p-2 text-center text-white/50">🅰️ A</th>
-                        <th className="p-2 text-center text-white/50">🟨</th>
-                        <th className="p-2 text-center text-white/50">🟥</th>
-                        <th className="p-2 text-center text-white/50">🧤</th>
+                        <th className="p-2.5 text-left text-white/50">Player & Role</th>
+                        <th className="p-2.5 text-center text-white/50">Played / Sub</th>
+                        <th className="p-2.5 text-center text-white/50">⚽ G</th>
+                        <th className="p-2.5 text-center text-white/50">🅰️ A</th>
+                        <th className="p-2.5 text-center text-white/50">🟨</th>
+                        <th className="p-2.5 text-center text-white/50">🟥</th>
+                        <th className="p-2.5 text-center text-white/50">🧤 Clean Sheet</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-pitch-700/50">
                       {sortedPlayers.map(p => {
-                        const ev = playerEvents[p.id] || { goals: 0, assists: 0, yellow_card: false, red_card: false, clean_sheet: false, injured: false };
+                        const ev = playerEvents[p.id] || {
+                          player_id: p.id,
+                          played: false,
+                          is_starter: false,
+                          substituted_off: false,
+                          substituted_in: false,
+                          replaced_player_id: null,
+                          goals: 0,
+                          assists: 0,
+                          yellow_card: false,
+                          red_card: false,
+                          clean_sheet: false,
+                          injured: false,
+                        };
+
+                        const group = getPositionGroup(p.preferred_position);
+                        const colors = POSITION_COLORS[group];
+
+                        // Available bench players for substitution dropdown
+                        const availableBench = sortedPlayers.filter(
+                          b => !playerEvents[b.id]?.is_starter && !b.stats?.is_injured
+                        );
+
                         return (
-                          <tr key={p.id} className={clsx('transition-colors', ev.injured ? 'opacity-40 bg-red-950/10' : 'hover:bg-pitch-800/40')}>
-                            <td className="p-2 font-medium text-white">
-                              <div className="flex items-center gap-1.5">
-                                {ev.injured && <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.5 rounded">INJ</span>}
-                                <span className="truncate max-w-[90px]">{p.full_name}</span>
-                                <span className="text-[9px] text-white/30">({p.preferred_position})</span>
+                          <tr
+                            key={p.id}
+                            className={clsx(
+                              'transition-colors',
+                              ev.injured
+                                ? 'opacity-40 bg-red-950/10'
+                                : ev.is_starter
+                                ? 'bg-emerald-950/10 hover:bg-emerald-950/20'
+                                : ev.played
+                                ? 'bg-cyan-950/20 hover:bg-cyan-950/30'
+                                : 'hover:bg-pitch-800/40'
+                            )}
+                          >
+                            {/* Player Name & Role */}
+                            <td className="p-2.5 font-medium text-white">
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span translate="no" className={clsx('badge text-[9px] font-bold px-1.5 py-0.2 rounded uppercase', colors.badge)}>
+                                    {p.preferred_position}
+                                  </span>
+                                  <span className="font-bold truncate max-w-[110px] sm:max-w-[150px]">{p.full_name}</span>
+                                  {ev.is_starter && (
+                                    <span className="text-[9px] text-emerald-400 font-extrabold bg-emerald-400/10 border border-emerald-400/20 px-1 py-0.2 rounded">
+                                      STARTER
+                                    </span>
+                                  )}
+                                  {ev.injured && (
+                                    <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.2 rounded">INJ</span>
+                                  )}
+                                </div>
+
+                                {/* Substitution Selector for Starters */}
+                                {ev.is_starter && (
+                                  <div className="flex items-center gap-1 mt-1 text-[10px]">
+                                    <ArrowLeftRight size={10} className="text-white/40 flex-shrink-0" />
+                                    <select
+                                      value={ev.replaced_player_id || ''}
+                                      onChange={(e) => handleStarterSubstitutedOff(p.id, e.target.value)}
+                                      className="bg-[#0b111e] border border-pitch-700 text-white/80 rounded px-1.5 py-0.5 text-[10px] outline-none"
+                                    >
+                                      <option value="">No subbed off</option>
+                                      {availableBench.map(b => (
+                                        <option key={b.id} value={b.id} className="bg-pitch-900 text-white">
+                                          Sub: {b.full_name} ({b.preferred_position})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+
+                                {ev.substituted_in && ev.replaced_player_id && (
+                                  <span className="text-[9px] text-cyan-300 font-bold mt-0.5">
+                                    ▶ Subbed in for {players.find(x => x.id === ev.replaced_player_id)?.full_name}
+                                  </span>
+                                )}
                               </div>
                             </td>
 
-                            {/* Goals: - [n] + */}
+                            {/* Played / Subbed Toggle for Bench Players */}
+                            <td className="p-2.5 text-center">
+                              {ev.is_starter ? (
+                                <span className={clsx("text-[10px] font-bold px-2 py-1 rounded-md", ev.substituted_off ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-400")}>
+                                  {ev.substituted_off ? "Subbed Off" : "Played XI"}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={ev.injured}
+                                  onClick={() => updatePlayerEvent(p.id, 'played', !ev.played)}
+                                  className={clsx(
+                                    "px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all border flex items-center gap-1 mx-auto",
+                                    ev.played
+                                      ? "bg-cyan-400/20 border-cyan-400/40 text-cyan-300 shadow-sm"
+                                      : "bg-pitch-700/60 border-transparent text-white/40 hover:text-white"
+                                  )}
+                                >
+                                  {ev.played ? <UserCheck size={10} /> : <UserPlus size={10} />}
+                                  {ev.played ? "Entered Match" : "Did Not Play"}
+                                </button>
+                              )}
+                            </td>
+
+                            {/* Goals */}
                             <td className="p-1.5 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" disabled={ev.injured || ev.goals <= 0}
@@ -366,7 +570,7 @@ export default function Stats() {
                               </div>
                             </td>
 
-                            {/* Assists: - [n] + */}
+                            {/* Assists */}
                             <td className="p-1.5 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" disabled={ev.injured || ev.assists <= 0}
@@ -385,7 +589,7 @@ export default function Stats() {
                               </div>
                             </td>
 
-                            {/* Yellow Card toggle */}
+                            {/* Yellow Card */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
@@ -397,7 +601,7 @@ export default function Stats() {
                               </button>
                             </td>
 
-                            {/* Red Card toggle */}
+                            {/* Red Card */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
@@ -409,13 +613,13 @@ export default function Stats() {
                               </button>
                             </td>
 
-                            {/* Clean Sheet toggle */}
+                            {/* Clean Sheet */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
                                 className={clsx(
                                   'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
-                                  ev.clean_sheet ? 'bg-neon-400/20 text-neon-400 border border-neon-400/40' : 'bg-pitch-700 text-white/30 hover:bg-neon-400/10 hover:text-neon-400'
+                                  ev.clean_sheet ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/40 shadow-sm' : 'bg-pitch-700 text-white/30 hover:bg-emerald-400/10 hover:text-emerald-400'
                                 )}>
                                 🧤
                               </button>

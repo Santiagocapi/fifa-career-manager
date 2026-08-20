@@ -171,22 +171,30 @@ export const FORMATIONS: {
   label: string;
   lines: number[];
 }[] = [
+  // 4-3-3 Variants
+  { scheme: '4-3-3 Attack',     label: '4-3-3 Attack',           lines: [4, 1, 2, 3] },
+  { scheme: '4-3-3 Holding',    label: '4-3-3 Holding',          lines: [4, 1, 2, 3] },
+  { scheme: '4-3-3 Defend',     label: '4-3-3 Defend',           lines: [4, 2, 1, 3] },
+  { scheme: '4-3-3 False 9',    label: '4-3-3 False 9',          lines: [4, 3, 1, 2] },
+  { scheme: '4-3-3',            label: '4-3-3 Flat',             lines: [4, 3, 3] },
   // 4-back systems
-  { scheme: '4-4-2',    label: '4-4-2 Classic',          lines: [4, 4, 2] },
-  { scheme: '4-3-3',    label: '4-3-3 Attack',            lines: [4, 3, 3] },
-  { scheme: '4-2-3-1',  label: '4-2-3-1 Modern',         lines: [4, 2, 3, 1] },
-  { scheme: '4-5-1',    label: '4-5-1 Defensive',         lines: [4, 5, 1] },
-  { scheme: '4-1-4-1',  label: '4-1-4-1 Counter',        lines: [4, 1, 4, 1] },
-  { scheme: '4-3-2-1',  label: '4-3-2-1 Christmas Tree', lines: [4, 3, 2, 1] },
-  { scheme: '4-4-1-1',  label: '4-4-1-1 Compact',        lines: [4, 4, 1, 1] },
-  { scheme: '4-2-2-2',  label: '4-2-2-2 Box',            lines: [4, 2, 2, 2] },
-  { scheme: '4-3-1-2',  label: '4-3-1-2 Diamond',        lines: [4, 3, 1, 2] },
+  { scheme: '4-2-3-1',          label: '4-2-3-1 Wide',           lines: [4, 2, 3, 1] },
+  { scheme: '4-2-3-1 Narrow',   label: '4-2-3-1 Narrow',         lines: [4, 2, 3, 1] },
+  { scheme: '4-1-2-1-2 Narrow', label: '4-1-2-1-2 Narrow',       lines: [4, 1, 2, 1, 2] },
+  { scheme: '4-1-2-1-2 Wide',   label: '4-1-2-1-2 Wide',         lines: [4, 1, 2, 1, 2] },
+  { scheme: '4-4-2',            label: '4-4-2 Classic',          lines: [4, 4, 2] },
+  { scheme: '4-5-1',            label: '4-5-1 Defensive',        lines: [4, 5, 1] },
+  { scheme: '4-1-4-1',          label: '4-1-4-1 Counter',        lines: [4, 1, 4, 1] },
+  { scheme: '4-3-2-1',          label: '4-3-2-1 Christmas Tree', lines: [4, 3, 2, 1] },
+  { scheme: '4-4-1-1',          label: '4-4-1-1 Compact',        lines: [4, 4, 1, 1] },
+  { scheme: '4-2-2-2',          label: '4-2-2-2 Box',            lines: [4, 2, 2, 2] },
+  { scheme: '4-3-1-2',          label: '4-3-1-2 Diamond',        lines: [4, 3, 1, 2] },
   // 3-back systems
-  { scheme: '3-5-2',    label: '3-5-2 Wing-Backs',       lines: [3, 5, 2] },
-  { scheme: '3-4-3',    label: '3-4-3 Attack',            lines: [3, 4, 3] },
+  { scheme: '3-5-2',            label: '3-5-2 Wing-Backs',       lines: [3, 5, 2] },
+  { scheme: '3-4-3',            label: '3-4-3 Attack',           lines: [3, 4, 3] },
   // 5-back systems
-  { scheme: '5-3-2',    label: '5-3-2 Defensive',         lines: [5, 3, 2] },
-  { scheme: '5-4-1',    label: '5-4-1 Fortress',          lines: [5, 4, 1] },
+  { scheme: '5-3-2',            label: '5-3-2 Defensive',        lines: [5, 3, 2] },
+  { scheme: '5-4-1',            label: '5-4-1 Fortress',         lines: [5, 4, 1] },
 ];
 
 // ============================================================

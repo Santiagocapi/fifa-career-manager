@@ -16,6 +16,7 @@ interface UseScoutingReturn {
   updateEntry: (id: string, data: Partial<ScoutingEntry>) => Promise<void>;
   moveEntry: (id: string, newListType: ScoutingListType) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
+  signToSquad: (scoutEntry: ScoutingEntry, seasonId: string, wageCents?: number) => Promise<boolean>;
 }
 
 export const useScouting = (careerId: string | null): UseScoutingReturn => {
@@ -78,5 +79,57 @@ export const useScouting = (careerId: string | null): UseScoutingReturn => {
     else setEntries(prev => prev.filter(e => e.id !== id));
   };
 
-  return { entries, byList, loading, error, addEntry, updateEntry, moveEntry, deleteEntry };
+  const signToSquad = async (
+    scoutEntry: ScoutingEntry,
+    seasonId: string,
+    wageCents?: number
+  ): Promise<boolean> => {
+    if (!careerId || !seasonId) return false;
+
+    // 1. Insert into players table
+    const { data: newPlayer, error: playerErr } = await supabase
+      .from('players')
+      .insert({
+        career_id: careerId,
+        full_name: scoutEntry.full_name,
+        preferred_position: scoutEntry.position || 'CM',
+        nationality: scoutEntry.nationality || null,
+        joined_year: new Date().getFullYear(),
+      })
+      .select()
+      .single();
+
+    if (playerErr || !newPlayer) {
+      setError(playerErr?.message ?? 'Failed to sign player to squad');
+      return false;
+    }
+
+    // 2. Insert into season_stats table
+    const ovr = scoutEntry.current_ovr || 75;
+    const value = scoutEntry.estimated_value || 500000000;
+    const wage = wageCents || 1000000;
+
+    await supabase.from('season_stats').insert({
+      season_id: seasonId,
+      player_id: newPlayer.id,
+      ovr_start: ovr,
+      ovr_end: ovr,
+      market_value_start: value,
+      market_value_end: value,
+      wage: wage,
+      matches_played: 0,
+      goals: 0,
+      assists: 0,
+      yellow_cards: 0,
+      red_cards: 0,
+      clean_sheets: 0,
+      is_injured: false,
+    });
+
+    // 3. Remove from scouting list
+    await deleteEntry(scoutEntry.id);
+    return true;
+  };
+
+  return { entries, byList, loading, error, addEntry, updateEntry, moveEntry, deleteEntry, signToSquad };
 };

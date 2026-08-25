@@ -9,7 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
 import { useTacticsStore } from '../store/useTacticsStore';
-import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode } from '../lib/constants';
+import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
 import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown, Award, ArrowLeftRight, UserCheck, UserPlus, ShieldCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
@@ -794,11 +794,16 @@ export default function Stats() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-xl flex-shrink-0">
-                      <Star size={12} className="text-amber-400 fill-amber-400" />
-                      <span className="font-mono font-black text-amber-300 text-xs">
-                        {count} {count === 1 ? 'MVP' : 'MVPs'}
+                    <div className="flex items-center gap-2">
+                      <span className={clsx("w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs shadow-sm flex-shrink-0", getOvrBadgeStyle(player.stats?.ovr_end ?? player.stats?.ovr_start).badgeClass)}>
+                        {player.stats?.ovr_end ?? player.stats?.ovr_start ?? 75}
                       </span>
+                      <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-xl flex-shrink-0">
+                        <Star size={12} className="text-amber-400 fill-amber-400" />
+                        <span className="font-mono font-black text-amber-300 text-xs">
+                          {count} {count === 1 ? 'MVP' : 'MVPs'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );

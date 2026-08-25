@@ -12,6 +12,7 @@ import {
   formatValue,
   getCountryCode,
   SCOUTING_LIST_TYPES,
+  getOvrBadgeStyle,
 } from "../../lib/constants";
 import { Globe, Trash2, UserPlus, FileText, Building, ArrowRight } from "lucide-react";
 
@@ -78,7 +79,7 @@ export default function ScoutCard({
         {/* OVR Rating Badge & Delete Action */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {entry.current_ovr ? (
-            <div className="w-9 h-9 rounded-xl bg-pitch-700/80 border border-pitch-600 flex items-center justify-center font-mono font-black text-amber-300 text-sm shadow-inner">
+            <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-mono text-sm shadow-md transition-transform hover:scale-105", getOvrBadgeStyle(entry.current_ovr).badgeClass)}>
               {entry.current_ovr}
             </div>
           ) : (

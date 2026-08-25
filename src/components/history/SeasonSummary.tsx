@@ -12,6 +12,7 @@ import {
   getPlayerInitials,
   getPlayerAvatarGradient,
   getCountryCode,
+  getOvrBadgeStyle,
 } from "../../lib/constants";
 import { Crown, Flame, Swords, ShieldCheck, Trophy, Sparkles } from "lucide-react";
 
@@ -140,7 +141,7 @@ export default function SeasonSummary({
                       {initials}
                     </div>
                     {/* OVR Badge */}
-                    <div className="absolute -bottom-2 -right-2 bg-pitch-900 border border-amber-400/40 text-amber-300 font-mono font-black text-xs px-2 py-0.5 rounded-lg shadow-md">
+                    <div className={clsx("absolute -bottom-2 -right-2 font-mono font-black text-xs px-2 py-0.5 rounded-lg shadow-md", getOvrBadgeStyle(ovr).badgeClass)}>
                       {ovr}
                     </div>
                   </div>

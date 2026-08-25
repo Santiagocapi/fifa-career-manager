@@ -13,6 +13,7 @@ import {
   getPlayerInitials,
   getPlayerAvatarGradient,
   getCountryCode,
+  getOvrBadgeStyle,
 } from "../../lib/constants";
 import { ArrowLeftRight } from "lucide-react";
 
@@ -205,7 +206,7 @@ export default function PitchBoard({
                     {slot.role}
                   </span>
                   {ovr !== null && (
-                    <span className="text-[10px] sm:text-xs font-black text-amber-300 font-mono tracking-tight bg-amber-400/10 px-1 py-0.2 rounded border border-amber-400/20 shadow-sm">
+                    <span className={clsx("text-[10px] sm:text-xs font-black font-mono tracking-tight px-1.5 py-0.2 rounded shadow-sm", getOvrBadgeStyle(ovr).badgeClass)}>
                       {ovr}
                     </span>
                   )}

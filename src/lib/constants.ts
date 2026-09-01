@@ -298,3 +298,61 @@ export const getGrowthColor = (start: number | null, end: number | null): string
   if (diff < 0) return 'text-red-400';
   return 'text-white/50';
 };
+
+// ============================================================
+// OVR TIER VISUAL HIGHLIGHTS
+// Returns distinct badge CSS classes based on player OVR rating:
+// - 90+ : Legendary Gold Neon (👑)
+// - 85-89: Elite Gold (⭐)
+// - 80-84: High Tier Emerald (💚)
+// - 75-79: Good Cyan (💙)
+// - < 75 : Standard Slate (⚪)
+// ============================================================
+export interface OvrTierStyle {
+  tier: 'legendary' | 'elite' | 'high' | 'good' | 'standard';
+  badgeClass: string;
+  glowClass: string;
+  label: string;
+}
+
+export const getOvrBadgeStyle = (ovr: number | null | undefined): OvrTierStyle => {
+  const val = ovr ?? 0;
+  if (val >= 90) {
+    return {
+      tier: 'legendary',
+      badgeClass: 'bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-slate-950 font-black border-2 border-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.7)]',
+      glowClass: 'shadow-[0_0_20px_rgba(245,158,11,0.5)] border-amber-400',
+      label: '90+ Legendary',
+    };
+  }
+  if (val >= 85) {
+    return {
+      tier: 'elite',
+      badgeClass: 'bg-gradient-to-br from-amber-500/30 via-amber-600/20 to-amber-600/10 border-2 border-amber-400 text-amber-300 font-extrabold shadow-[0_0_10px_rgba(245,158,11,0.35)]',
+      glowClass: 'border-amber-400/80',
+      label: '85-89 Elite',
+    };
+  }
+  if (val >= 80) {
+    return {
+      tier: 'high',
+      badgeClass: 'bg-gradient-to-br from-emerald-500/30 to-emerald-600/15 border-2 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_8px_rgba(52,211,153,0.25)]',
+      glowClass: 'border-emerald-400/70',
+      label: '80-84 High Tier',
+    };
+  }
+  if (val >= 75) {
+    return {
+      tier: 'good',
+      badgeClass: 'bg-gradient-to-br from-cyan-500/25 to-blue-600/15 border border-cyan-400/80 text-cyan-300 font-bold shadow-sm',
+      glowClass: 'border-cyan-400/50',
+      label: '75-79 Good',
+    };
+  }
+  return {
+    tier: 'standard',
+    badgeClass: 'bg-slate-800/80 border border-slate-600 text-slate-300 font-medium',
+    glowClass: 'border-slate-600',
+    label: '<75 Standard',
+  };
+};

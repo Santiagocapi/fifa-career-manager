@@ -10,7 +10,7 @@ import { useSeasons } from "../hooks/useSeasons";
 import { useTrophies } from "../hooks/useTrophies";
 import { usePlayers } from "../hooks/usePlayers";
 import { useMatches } from "../hooks/useMatches";
-import { TROPHY_TYPES, formatValue, getPositionGroup, POSITION_COLORS } from "../lib/constants";
+import { TROPHY_TYPES, formatValue, getPositionGroup, POSITION_COLORS, getOvrBadgeStyle } from "../lib/constants";
 import TrophyCabinet from "../components/history/TrophyCabinet";
 import SeasonSummary from "../components/history/SeasonSummary";
 import { Trophy, Plus, X, Loader2, Calendar, Award, Crown } from "lucide-react";
@@ -292,6 +292,7 @@ export default function History() {
                         const growth = ovrEnd - ovrStart;
                         const group = getPositionGroup(player.preferred_position);
                         const colors = POSITION_COLORS[group];
+                        const ovrStyle = getOvrBadgeStyle(ovrEnd);
 
                         return (
                           <tr
@@ -312,8 +313,10 @@ export default function History() {
                                 {player.preferred_position}
                               </span>
                             </td>
-                            <td className="py-2.5 text-center font-mono font-bold text-amber-300">
-                              {ovrEnd}
+                            <td className="py-2.5 text-center">
+                              <span className={clsx("font-mono font-bold text-xs px-2 py-0.5 rounded-md inline-block shadow-sm", ovrStyle.badgeClass)}>
+                                {ovrEnd}
+                              </span>
                             </td>
                             <td className="py-2.5 text-center font-mono font-bold">
                               {growth > 0 ? (

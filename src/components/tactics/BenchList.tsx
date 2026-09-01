@@ -13,6 +13,7 @@ import {
   getPlayerInitials,
   getPlayerAvatarGradient,
   getCountryCode,
+  getOvrBadgeStyle,
 } from "../../lib/constants";
 import { ArrowRightLeft, GripVertical } from "lucide-react";
 
@@ -67,6 +68,7 @@ export default function BenchList({
             const ovr = player.stats?.ovr_end ?? player.stats?.ovr_start ?? 75;
             const countryCode = getCountryCode(player.nationality);
             const isInjured = player.stats?.is_injured ?? false;
+            const ovrStyle = getOvrBadgeStyle(ovr);
 
             return (
               <div
@@ -127,7 +129,7 @@ export default function BenchList({
 
                 {/* OVR Rating & Swap Action */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-9 h-9 rounded-xl bg-pitch-700/80 border border-pitch-600 flex items-center justify-center font-mono font-black text-amber-300 text-sm shadow-sm">
+                  <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-mono font-black text-sm shadow-md transition-transform hover:scale-105", ovrStyle.badgeClass)}>
                     {ovr}
                   </div>
                   {selectedSlotIndex !== null && (
@@ -150,4 +152,3 @@ export default function BenchList({
     </div>
   );
 }
-

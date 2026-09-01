@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag, getCountryCode } from '../lib/constants';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
 import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save, ChevronDown } from 'lucide-react';
 
 import { useForm } from 'react-hook-form';
@@ -352,7 +352,7 @@ export default function Squad() {
                 {/* OVR */}
                 {player.stats?.ovr_start && (
                   <div className="flex flex-col items-center">
-                    <span className="ovr-badge text-sm">
+                    <span className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-mono text-sm shadow-md transition-transform hover:scale-105", getOvrBadgeStyle(player.stats.ovr_end ?? player.stats.ovr_start).badgeClass)}>
                       {player.stats.ovr_end ?? player.stats.ovr_start}
                     </span>
                     {ovrGrowth !== null && ovrGrowth !== 0 && (

@@ -72,6 +72,7 @@ export default function Stats() {
   const [submitting, setSubmitting] = useState(false);
 
   // Match Form state
+  const [modalTab, setModalTab] = useState<'score' | 'starters' | 'bench'>('score');
   const [opponent, setOpponent] = useState('');
   const [competition, setCompetition] = useState('League');
   const [teamScore, setTeamScore] = useState(0);
@@ -107,6 +108,7 @@ export default function Stats() {
 
   const handleOpenAddModal = () => {
     setEditingMatch(null);
+    setModalTab('score');
     setOpponent('');
     setCompetition('League');
     setTeamScore(0);
@@ -149,6 +151,7 @@ export default function Stats() {
 
   const handleOpenEditModal = (match: MatchWithDetails) => {
     setEditingMatch(match);
+    setModalTab('score');
     setOpponent(match.opponent);
     setCompetition(match.competition || 'League');
     setTeamScore(match.team_score);
@@ -303,134 +306,361 @@ export default function Stats() {
           <div className="glass-card w-full md:max-w-2xl flex flex-col h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-2xl animate-fade-in">
 
             {/* Modal header */}
-            <div className="flex items-center justify-between p-5 pb-4 border-b border-pitch-700 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neon-400/10 border border-neon-400/20 flex items-center justify-center flex-shrink-0">
-                  <Swords size={20} className="text-neon-400" />
+            <div className="flex flex-col border-b border-pitch-700 flex-shrink-0">
+              <div className="flex items-center justify-between p-4 md:p-5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-neon-400/10 border border-neon-400/20 flex items-center justify-center flex-shrink-0">
+                    <Swords size={20} className="text-neon-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base md:text-lg">
+                      {editingMatch ? 'Edit Match Details' : 'Log Match Details'}
+                    </h3>
+                    <p className="text-white/40 text-xs hidden md:block">Record score, opponent, competition, MVP & player stats</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-white text-base md:text-lg">
-                    {editingMatch ? 'Edit Match Details' : 'Log Match Details'}
-                  </h3>
-                  <p className="text-white/40 text-xs hidden md:block">Record score, opponent, competition, MVP & player stats</p>
-                </div>
+                <button onClick={() => setLogging(false)} className="btn-ghost p-2"><X size={18} /></button>
               </div>
-              <button onClick={() => setLogging(false)} className="btn-ghost p-2"><X size={18} /></button>
+
+              {/* Mobile Step Navigation Tabs */}
+              <div className="flex items-center gap-1 px-4 pb-3 overflow-x-auto scrollbar-none border-t border-pitch-700/50 pt-2.5">
+                <button
+                  type="button"
+                  onClick={() => setModalTab('score')}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
+                    modalTab === 'score'
+                      ? "bg-amber-400 text-slate-950 font-black shadow-md"
+                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
+                  )}
+                >
+                  <Trophy size={14} /> 1. Resultado & MVP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('starters')}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
+                    modalTab === 'starters'
+                      ? "bg-emerald-400 text-slate-950 font-black shadow-md"
+                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
+                  )}
+                >
+                  <UserCheck size={14} /> 2. Titulares (11)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('bench')}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
+                    modalTab === 'bench'
+                      ? "bg-cyan-400 text-slate-950 font-black shadow-md"
+                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
+                  )}
+                >
+                  <UserPlus size={14} /> 3. Suplentes
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSaveMatch} className="flex flex-col gap-5 p-5 overflow-y-auto flex-1">
-              {/* Opponent & Competition */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="form-group col-span-2 md:col-span-1">
-                  <label className="form-label">Opponent (Rival) *</label>
-                  <input
-                    required
-                    placeholder="e.g. Real Madrid"
-                    value={opponent}
-                    onChange={e => setOpponent(e.target.value)}
-                  />
-                </div>
-                <div className="form-group col-span-2 md:col-span-1">
-                  <label className="form-label">Competition</label>
-                  <div className="relative">
-                    <select
-                      value={competition}
-                      onChange={e => setCompetition(e.target.value)}
-                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
-                    >
-                      {COMPETITIONS.map(c => (
-                        <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
+            <form onSubmit={handleSaveMatch} className="flex flex-col gap-5 p-4 sm:p-5 overflow-y-auto flex-1">
 
-              {/* Scoreboard — big +/- buttons */}
-              <div className="p-4 rounded-xl bg-pitch-900/60 border border-pitch-700">
-                <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4 font-medium">Match Score</p>
-                <div className="flex items-center justify-center gap-4">
-                  {/* Your team score */}
-                  <div className="flex flex-col items-center gap-1 flex-1">
-                    <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Your Team</span>
-                    <div className="flex items-center gap-3">
-                      <button type="button"
-                        onClick={() => setTeamScore(s => Math.max(0, s - 1))}
-                        disabled={teamScore <= 0}
-                        className="w-10 h-10 rounded-xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-lg font-bold">
-                        <Minus size={16} />
-                      </button>
-                      <span className="text-4xl font-black text-white w-10 text-center tabular-nums">{teamScore}</span>
-                      <button type="button"
-                        onClick={() => setTeamScore(s => s + 1)}
-                        className="w-10 h-10 rounded-xl bg-neon-400/20 hover:bg-neon-400/30 text-neon-400 flex items-center justify-center transition-colors text-lg font-bold">
-                        <Plus size={16} />
-                      </button>
+              {/* TAB 1: Score, Opponent & Competition */}
+              {(modalTab === 'score' || true) && (
+                <div className={clsx("flex flex-col gap-4", modalTab !== 'score' && "hidden sm:flex")}>
+                  {/* Opponent & Competition */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="form-group col-span-2 md:col-span-1">
+                      <label className="form-label">Opponent (Rival) *</label>
+                      <input
+                        required
+                        placeholder="e.g. Real Madrid"
+                        value={opponent}
+                        onChange={e => setOpponent(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group col-span-2 md:col-span-1">
+                      <label className="form-label">Competition</label>
+                      <div className="relative">
+                        <select
+                          value={competition}
+                          onChange={e => setCompetition(e.target.value)}
+                          className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                        >
+                          {COMPETITIONS.map(c => (
+                            <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Opponent score */}
-                  <div className="flex flex-col items-center gap-1 flex-1">
-                    <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
-                    <div className="flex items-center gap-3">
-                      <button type="button"
-                        onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
-                        disabled={opponentScore <= 0}
-                        className="w-10 h-10 rounded-xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-lg font-bold">
-                        <Minus size={16} />
-                      </button>
-                      <span className="text-4xl font-black text-red-400 w-10 text-center tabular-nums">{opponentScore}</span>
-                      <button type="button"
-                        onClick={() => handleOpponentScoreChange(opponentScore + 1)}
-                        className="w-10 h-10 rounded-xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-lg font-bold">
-                        <Plus size={16} />
-                      </button>
+                  {/* Scoreboard — big +/- buttons */}
+                  <div className="p-4 rounded-2xl bg-pitch-900/80 border border-pitch-700 shadow-md">
+                    <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4 font-medium">Match Score</p>
+                    <div className="flex items-center justify-center gap-4">
+                      {/* Your team score */}
+                      <div className="flex flex-col items-center gap-1 flex-1">
+                        <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Your Team</span>
+                        <div className="flex items-center gap-3">
+                          <button type="button"
+                            onClick={() => setTeamScore(s => Math.max(0, s - 1))}
+                            disabled={teamScore <= 0}
+                            className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
+                            <Minus size={18} />
+                          </button>
+                          <span className="text-4xl sm:text-5xl font-black text-white w-12 text-center tabular-nums">{teamScore}</span>
+                          <button type="button"
+                            onClick={() => setTeamScore(s => s + 1)}
+                            className="w-12 h-12 rounded-2xl bg-neon-400/20 hover:bg-neon-400/30 text-neon-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Opponent score */}
+                      <div className="flex flex-col items-center gap-1 flex-1">
+                        <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
+                        <div className="flex items-center gap-3">
+                          <button type="button"
+                            onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
+                            disabled={opponentScore <= 0}
+                            className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
+                            <Minus size={18} />
+                          </button>
+                          <span className="text-4xl sm:text-5xl font-black text-red-400 w-12 text-center tabular-nums">{opponentScore}</span>
+                          <button type="button"
+                            onClick={() => handleOpponentScoreChange(opponentScore + 1)}
+                            className="w-12 h-12 rounded-2xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Match MVP */}
+                  <div className="form-group">
+                    <label className="form-label flex items-center gap-1.5">
+                      <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={mvpPlayerId}
+                        onChange={e => setMvpPlayerId(e.target.value)}
+                        className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                      >
+                        <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
+                        {sortedPlayers.map(p => (
+                          <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Match MVP */}
-              <div className="form-group">
-                <label className="form-label flex items-center gap-1.5">
-                  <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
-                </label>
-                <div className="relative">
-                  <select
-                    value={mvpPlayerId}
-                    onChange={e => setMvpPlayerId(e.target.value)}
-                    className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
-                  >
-                    <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
-                    {sortedPlayers.map(p => (
-                      <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Player Events Table: Starters & Substitutes */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
+              {/* Player Events Section: Mobile Cards OR Desktop Table */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-bold text-white text-sm flex items-center gap-2">
                       <UserCheck size={16} className="text-emerald-400" />
-                      Player Match Performances & Substitutions
+                      Player Match Performances
                     </h4>
                     <p className="text-[11px] text-white/50 mt-0.5">
-                      Starting XI automatically counts toward Matches Played. Mark substitutes who entered the match.
+                      Starting XI automatically counts toward Matches Played.
                     </p>
                   </div>
                   {opponentScore === 0 && (
                     <span className="badge bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] uppercase font-bold flex items-center gap-1">
-                      <ShieldCheck size={12} /> Auto Clean Sheets (0 Conceded)
+                      <ShieldCheck size={12} /> Auto Clean Sheets
                     </span>
                   )}
                 </div>
 
-                <div className="border border-pitch-700 rounded-2xl overflow-hidden max-h-[340px] overflow-y-auto">
+                {/* MOBILE VIEW (< sm): Touch-Friendly Player Cards */}
+                <div className="block sm:hidden space-y-3">
+                  {sortedPlayers
+                    .filter(p => {
+                      const isStarter = playerEvents[p.id]?.is_starter;
+                      if (modalTab === 'starters') return isStarter;
+                      if (modalTab === 'bench') return !isStarter;
+                      return true; // on score tab, show all
+                    })
+                    .map(p => {
+                      const ev = playerEvents[p.id] || {
+                        player_id: p.id,
+                        played: false,
+                        is_starter: false,
+                        substituted_off: false,
+                        substituted_in: false,
+                        replaced_player_id: null,
+                        goals: 0,
+                        assists: 0,
+                        yellow_card: false,
+                        red_card: false,
+                        clean_sheet: false,
+                        injured: false,
+                      };
+
+                      const group = getPositionGroup(p.preferred_position);
+                      const colors = POSITION_COLORS[group];
+                      const availableBench = sortedPlayers.filter(
+                        b => !playerEvents[b.id]?.is_starter && !b.stats?.is_injured
+                      );
+                      const ovr = p.stats?.ovr_end ?? p.stats?.ovr_start ?? 75;
+                      const ovrStyle = getOvrBadgeStyle(ovr);
+
+                      return (
+                        <div
+                          key={p.id}
+                          className={clsx(
+                            "p-3.5 rounded-2xl border flex flex-col gap-3 transition-all",
+                            ev.injured
+                              ? "opacity-40 bg-red-950/10 border-red-900/30"
+                              : ev.is_starter
+                              ? "bg-[#0b111e]/90 border-emerald-500/30"
+                              : ev.played
+                              ? "bg-[#0b111e]/90 border-cyan-500/30"
+                              : "bg-[#0b111e]/50 border-pitch-700/60 opacity-80"
+                          )}
+                        >
+                          {/* Card Header: Name, Position, OVR & Starter/Bench badge */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span translate="no" className={clsx("badge text-[9px] font-black px-1.5 py-0.2 rounded uppercase shadow-sm", colors.badge)}>
+                                {p.preferred_position}
+                              </span>
+                              <span className="font-extrabold text-white text-sm truncate">{p.full_name}</span>
+                              {ev.is_starter && (
+                                <span className="text-[9px] text-emerald-400 font-extrabold bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.2 rounded flex-shrink-0">
+                                  STARTER
+                                </span>
+                              )}
+                              {ev.injured && (
+                                <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.2 rounded flex-shrink-0">INJ</span>
+                              )}
+                            </div>
+
+                            <div className={clsx("w-8 h-8 rounded-xl flex items-center justify-center font-mono font-black text-xs shadow-sm flex-shrink-0", ovrStyle.badgeClass)}>
+                              {ovr}
+                            </div>
+                          </div>
+
+                          {/* Substitution / Bench Entry Controls */}
+                          {ev.is_starter ? (
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-pitch-700/50">
+                              <span className="text-[11px] text-white/50 font-medium">Sustituido por:</span>
+                              <select
+                                value={ev.replaced_player_id || ''}
+                                onChange={(e) => handleStarterSubstitutedOff(p.id, e.target.value)}
+                                className="bg-[#141e33] border border-pitch-700 text-white text-xs rounded-xl px-2.5 py-1 outline-none flex-1 max-w-[180px]"
+                              >
+                                <option value="">No subbed off</option>
+                                {availableBench.map(b => (
+                                  <option key={b.id} value={b.id} className="bg-pitch-900 text-white">
+                                    {b.full_name} ({b.preferred_position})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-pitch-700/50">
+                              <span className="text-[11px] text-white/50 font-medium">Participación:</span>
+                              <button
+                                type="button"
+                                disabled={ev.injured}
+                                onClick={() => updatePlayerEvent(p.id, 'played', !ev.played)}
+                                className={clsx(
+                                  "px-3 py-1 rounded-xl text-xs font-extrabold transition-all border flex items-center gap-1.5",
+                                  ev.played
+                                    ? "bg-cyan-400/20 border-cyan-400/40 text-cyan-300 shadow-sm"
+                                    : "bg-pitch-700/60 border-transparent text-white/40 hover:text-white"
+                                )}
+                              >
+                                {ev.played ? <UserCheck size={12} /> : <UserPlus size={12} />}
+                                {ev.played ? "▶ Entró al Partido" : "Did Not Play"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Quick Stats Touch Counters & Cards (if played) */}
+                          {ev.played && (
+                            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-pitch-700/50 items-center">
+                              {/* Goals */}
+                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
+                                <span className="text-[9px] text-white/40 uppercase font-bold">⚽ Goles</span>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button type="button" disabled={ev.injured || ev.goals <= 0}
+                                    onClick={() => updatePlayerEvent(p.id, 'goals', Math.max(0, ev.goals - 1))}
+                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white flex items-center justify-center font-bold">
+                                    -
+                                  </button>
+                                  <span className="w-4 text-center font-extrabold text-neon-400 text-sm">{ev.goals}</span>
+                                  <button type="button" disabled={ev.injured}
+                                    onClick={() => updatePlayerEvent(p.id, 'goals', ev.goals + 1)}
+                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-neon-400/20 text-neon-400 flex items-center justify-center font-bold">
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Assists */}
+                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
+                                <span className="text-[9px] text-white/40 uppercase font-bold">🅰️ Asist</span>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button type="button" disabled={ev.injured || ev.assists <= 0}
+                                    onClick={() => updatePlayerEvent(p.id, 'assists', Math.max(0, ev.assists - 1))}
+                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white flex items-center justify-center font-bold">
+                                    -
+                                  </button>
+                                  <span className="w-4 text-center font-extrabold text-electric-400 text-sm">{ev.assists}</span>
+                                  <button type="button" disabled={ev.injured}
+                                    onClick={() => updatePlayerEvent(p.id, 'assists', ev.assists + 1)}
+                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-electric-400/20 text-electric-400 flex items-center justify-center font-bold">
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Yellow & Red Cards */}
+                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
+                                <span className="text-[9px] text-white/40 uppercase font-bold">Tarjetas</span>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button type="button" disabled={ev.injured}
+                                    onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
+                                    className={clsx("w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.yellow_card ? "bg-amber-400 text-pitch-900" : "bg-pitch-700 text-white/30")}>
+                                    🟨
+                                  </button>
+                                  <button type="button" disabled={ev.injured}
+                                    onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
+                                    className={clsx("w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.red_card ? "bg-red-500 text-white" : "bg-pitch-700 text-white/30")}>
+                                    🟥
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Clean Sheet */}
+                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
+                                <span className="text-[9px] text-white/40 uppercase font-bold">Valla</span>
+                                <button type="button" disabled={ev.injured}
+                                  onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
+                                  className={clsx("w-full h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.clean_sheet ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/40" : "bg-pitch-700 text-white/30")}>
+                                  🧤
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* DESKTOP VIEW (>= sm): Full Data Table */}
+                <div className="hidden sm:block border border-pitch-700 rounded-2xl overflow-hidden max-h-[340px] overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700 z-10">
                       <tr>
@@ -463,7 +693,6 @@ export default function Stats() {
                         const group = getPositionGroup(p.preferred_position);
                         const colors = POSITION_COLORS[group];
 
-                        // Available bench players for substitution dropdown
                         const availableBench = sortedPlayers.filter(
                           b => !playerEvents[b.id]?.is_starter && !b.stats?.is_injured
                         );
@@ -482,7 +711,6 @@ export default function Stats() {
                                 : 'hover:bg-pitch-800/40'
                             )}
                           >
-                            {/* Player Name & Role */}
                             <td className="p-2.5 font-medium text-white">
                               <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-1.5">
@@ -500,7 +728,6 @@ export default function Stats() {
                                   )}
                                 </div>
 
-                                {/* Substitution Selector for Starters */}
                                 {ev.is_starter && (
                                   <div className="flex items-center gap-1 mt-1 text-[10px]">
                                     <ArrowLeftRight size={10} className="text-white/40 flex-shrink-0" />
@@ -527,7 +754,6 @@ export default function Stats() {
                               </div>
                             </td>
 
-                            {/* Played / Subbed Toggle for Bench Players */}
                             <td className="p-2.5 text-center">
                               {ev.is_starter ? (
                                 <span className={clsx("text-[10px] font-bold px-2 py-1 rounded-md", ev.substituted_off ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-400")}>
@@ -551,7 +777,6 @@ export default function Stats() {
                               )}
                             </td>
 
-                            {/* Goals */}
                             <td className="p-1.5 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" disabled={ev.injured || ev.goals <= 0}
@@ -570,7 +795,6 @@ export default function Stats() {
                               </div>
                             </td>
 
-                            {/* Assists */}
                             <td className="p-1.5 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button type="button" disabled={ev.injured || ev.assists <= 0}
@@ -589,7 +813,6 @@ export default function Stats() {
                               </div>
                             </td>
 
-                            {/* Yellow Card */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
@@ -601,7 +824,6 @@ export default function Stats() {
                               </button>
                             </td>
 
-                            {/* Red Card */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
@@ -613,7 +835,6 @@ export default function Stats() {
                               </button>
                             </td>
 
-                            {/* Clean Sheet */}
                             <td className="p-1.5 text-center">
                               <button type="button" disabled={ev.injured}
                                 onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
@@ -633,8 +854,8 @@ export default function Stats() {
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center py-3">
+              <div className="flex gap-3 pt-3 border-t border-pitch-700 flex-shrink-0">
+                <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center py-3 shadow-lg">
                   {submitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                   {editingMatch ? 'Save Changes' : 'Save Match & Update Stats'}
                 </button>

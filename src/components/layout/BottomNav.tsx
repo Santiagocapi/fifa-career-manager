@@ -1,6 +1,6 @@
 // ============================================================
 // src/components/layout/BottomNav.tsx
-// Mobile bottom navigation bar — shown only on small screens (md:hidden).
+// Mobile bottom navigation bar â€” shown only on small screens (md:hidden).
 // Mirrors the same nav items as the desktop sidebar.
 // ============================================================
 

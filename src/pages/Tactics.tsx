@@ -239,7 +239,7 @@ export default function Tactics() {
             <Crosshair size={28} className="text-amber-400" /> Tactical Board
           </h1>
           <p className="text-white/50 text-sm mt-1">
-            {activeSeason?.year_label ?? "No active season"} · Drag & Drop Players or Select Formations
+            {activeSeason?.year_label ?? "No active season"} Â· Drag & Drop Players or Select Formations
           </p>
         </div>
 

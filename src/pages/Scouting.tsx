@@ -252,7 +252,7 @@ export default function Scouting() {
                     <option value="">-- Choose Squad Member --</option>
                     {players.map((p) => (
                       <option key={p.id} value={p.id} className="bg-pitch-900 text-white">
-                        {p.full_name} ({p.preferred_position}) — OVR:{" "}
+                        {p.full_name} ({p.preferred_position}) â€” OVR:{" "}
                         {p.stats?.ovr_end ?? p.stats?.ovr_start ?? 75}
                       </option>
                     ))}
@@ -386,7 +386,7 @@ export default function Scouting() {
                 </span>
               </div>
               <p className="text-xs text-white/70">
-                {signingEntry.current_club ?? "Free Agent"} · {signingEntry.nationality} · OVR:{" "}
+                {signingEntry.current_club ?? "Free Agent"} Â· {signingEntry.nationality} Â· OVR:{" "}
                 <span className="font-mono font-bold text-amber-300">
                   {signingEntry.current_ovr ?? 75}
                 </span>

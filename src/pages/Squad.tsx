@@ -6,8 +6,8 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryFlag, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
-import { Plus, Search, Filter, TrendingUp, TrendingDown, Edit2, UserX, Loader2, X, Calendar, Save, ChevronDown } from 'lucide-react';
+import { POSITIONS, POSITION_COLORS, getPositionGroup, formatValue, formatWage, getPlayerInitials, getPlayerAvatarGradient, dollarsToCents, centsToDollars, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
+import { Plus, Search, TrendingUp, TrendingDown, Edit2, Loader2, X, Save, ChevronDown } from 'lucide-react';
 
 import { useForm } from 'react-hook-form';
 import { clsx } from 'clsx';
@@ -26,7 +26,7 @@ interface PlayerFormData {
 
 export default function Squad() {
   const { activeCareer, activeSeason } = useAppStore();
-  const { players, loading, addPlayer, updatePlayer, updateStats, deactivatePlayer } = usePlayers(
+  const { players, loading, addPlayer, updatePlayer, updateStats } = usePlayers(
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );
@@ -36,7 +36,7 @@ export default function Squad() {
   const [search, setSearch] = useState('');
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<PlayerFormData>();
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlayerFormData>();
 
   const filteredPlayers = players.filter(p => {
     const matchesSearch = p.full_name.toLowerCase().includes(search.toLowerCase());

@@ -4,7 +4,7 @@
 // Starting XI Management, Team Ratings, and Substitutes Bench.
 // ============================================================
 
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { usePlayers } from "../hooks/usePlayers";
 import { useTacticsStore } from "../store/useTacticsStore";
@@ -36,7 +36,7 @@ const QUICK_FORMATIONS: FormationScheme[] = [
 
 export default function Tactics() {
   const { activeCareer, activeSeason } = useAppStore();
-  const { players, loading } = usePlayers(
+  const { players } = usePlayers(
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );

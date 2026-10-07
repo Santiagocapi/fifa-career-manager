@@ -4,7 +4,6 @@
 // swap actions and Drag & Drop into the pitch.
 // ============================================================
 
-import React from "react";
 import { clsx } from "clsx";
 import type { PlayerWithStats } from "../../types/database";
 import {

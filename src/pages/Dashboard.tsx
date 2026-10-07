@@ -9,8 +9,7 @@ import { usePlayers } from '../hooks/usePlayers';
 import { useSeasons } from '../hooks/useSeasons';
 import { useTrophies } from '../hooks/useTrophies';
 import { useMatches } from '../hooks/useMatches';
-import { formatValue } from '../lib/constants';
-import { Users, Trophy, TrendingUp, Star, Plus, Calendar, Crown, Award, Heart, Loader2, Swords } from 'lucide-react';
+import { Users, Trophy, TrendingUp, Star, Plus, Calendar, Crown, Award, Heart, Swords } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -21,7 +20,7 @@ export default function Dashboard() {
   const { players, loading: playersLoading } = usePlayers(activeCareer?.id ?? null, activeSeason?.id ?? null);
   const { seasons, createSeason, loading: seasonsLoading } = useSeasons(activeCareer?.id ?? null);
   const { trophies } = useTrophies(activeSeason?.id ?? null);
-  const { matches } = useMatches(activeSeason?.id ?? null, activeCareer?.id ?? null);
+  const { matches } = useMatches(activeSeason?.id ?? null);
   const navigate = useNavigate();
   const [showSeasonForm, setShowSeasonForm] = useState(false);
   const { register, handleSubmit, reset } = useForm<{ year_label: string }>();

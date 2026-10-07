@@ -4,7 +4,7 @@
 // enlarged player cards, native Drag & Drop, and translate="no" guards.
 // ============================================================
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { clsx } from "clsx";
 import type { FormationScheme, PlayerWithStats } from "../../types/database";
 import { FORMATION_SLOTS, type PitchSlotDef } from "./formationPositions";

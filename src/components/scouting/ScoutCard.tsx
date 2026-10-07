@@ -3,7 +3,6 @@
 // Interactive Card for Scouted Players / Transfer Targets / Sell List.
 // ============================================================
 
-import React from "react";
 import { clsx } from "clsx";
 import type { ScoutingEntry, ScoutingListType } from "../../types/database";
 import {
@@ -14,7 +13,7 @@ import {
   SCOUTING_LIST_TYPES,
   getOvrBadgeStyle,
 } from "../../lib/constants";
-import { Globe, Trash2, UserPlus, FileText, Building, ArrowRight } from "lucide-react";
+import { Trash2, UserPlus, FileText, Building } from "lucide-react";
 
 interface ScoutCardProps {
   entry: ScoutingEntry;

@@ -3,7 +3,7 @@
 // Season Overview Metrics & Top 3 Most Influential Players Podium.
 // ============================================================
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { clsx } from "clsx";
 import type { Season, PlayerWithStats, MatchWithDetails } from "../../types/database";
 import {
@@ -14,7 +14,7 @@ import {
   getCountryCode,
   getOvrBadgeStyle,
 } from "../../lib/constants";
-import { Crown, Flame, Swords, ShieldCheck, Trophy, Sparkles } from "lucide-react";
+import { Crown, Flame, Swords, ShieldCheck, Trophy } from "lucide-react";
 
 interface SeasonSummaryProps {
   season: Season;
@@ -36,7 +36,6 @@ export default function SeasonSummary({
   const losses = matches.filter((m) => m.result === "loss").length;
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
   const goalsFor = matches.reduce((sum, m) => sum + m.team_score, 0);
-  const goalsAgainst = matches.reduce((sum, m) => sum + m.opponent_score, 0);
   const cleanSheets = matches.filter((m) => m.opponent_score === 0).length;
 
   // Calculate Top 3 Most Influential Players by (Goals + Assists + MVP bonus)
@@ -90,7 +89,7 @@ export default function SeasonSummary({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end pt-2">
             {topInfluentialPlayers.map((item, idx) => {
-              const { player, goals, assists, mvpCount, totalContributions } = item;
+              const { player, goals, assists, totalContributions } = item;
               const rank = idx + 1; // 1 = Gold, 2 = Silver, 3 = Bronze
               const group = getPositionGroup(player.preferred_position);
               const colors = POSITION_COLORS[group];

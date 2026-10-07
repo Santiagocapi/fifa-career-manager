@@ -11,7 +11,6 @@ import { Plus, Trophy, Globe, Loader2, Trash2 } from 'lucide-react';
 import { useCareers } from '../hooks/useCareers';
 import { useAppStore } from '../store/useAppStore';
 import type { Career, CreateCareerDto } from '../types/database';
-import { clsx } from 'clsx';
 
 interface CareerFormData {
   club_name: string;

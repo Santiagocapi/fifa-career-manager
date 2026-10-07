@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Match, MatchEvent, MatchWithDetails, CreateMatchDto, CreateMatchEventDto, H2HRecord, MatchResult } from '../types/database';
+import type { MatchWithDetails, CreateMatchDto, H2HRecord, MatchResult } from '../types/database';
 
 interface LogMatchPlayerEvent {
   player_id: string;
@@ -43,7 +43,7 @@ interface UseMatchesReturn {
   refetch: () => void;
 }
 
-export const useMatches = (seasonId: string | null, careerId: string | null): UseMatchesReturn => {
+export const useMatches = (seasonId: string | null): UseMatchesReturn => {
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +161,7 @@ export const useMatches = (seasonId: string | null, careerId: string | null): Us
 
   // Helper for batch updating season_stats concurrently
   const applyMatchEventsToSeasonStats = async (
-    events: { player_id: string; goals: number; assists: number; yellow_card: boolean; red_card: boolean; clean_sheet: boolean; injured: boolean }[],
+    events: { player_id: string; played?: boolean; goals: number; assists: number; yellow_card: boolean; red_card: boolean; clean_sheet: boolean; injured: boolean }[],
     multiplier: 1 | -1
   ) => {
     if (!seasonId || events.length === 0) return;

@@ -4,7 +4,7 @@
 // Free Agents, Sell List), Squad Player Auto-Fill, Search & Sign to Club.
 // ============================================================
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { useScouting } from "../hooks/useScouting";
 import { usePlayers } from "../hooks/usePlayers";

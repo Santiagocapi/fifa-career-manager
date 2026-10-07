@@ -4,7 +4,7 @@
 // Most Influential Players Podium and Season Summaries.
 // ============================================================
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { useSeasons } from "../hooks/useSeasons";
 import { useTrophies } from "../hooks/useTrophies";
@@ -40,8 +40,7 @@ export default function History() {
     viewingSeasonId
   );
   const { matches: seasonMatches } = useMatches(
-    viewingSeasonId,
-    activeCareer?.id ?? null
+    viewingSeasonId
   );
 
   const {
@@ -135,7 +134,7 @@ export default function History() {
               </div>
 
               {/* If Individual Award selected, select player */}
-              {selectedTrophyType === ("individual" as any) && (
+              {selectedTrophyType === "individual" && (
                 <div className="form-group">
                   <label className="form-label">Recipient Player</label>
                   <select

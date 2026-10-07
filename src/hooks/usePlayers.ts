@@ -122,7 +122,7 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
           }
 
           // Check for discrepancies and update in memory + Supabase
-          const syncUpdates: Promise<any>[] = [];
+          const syncUpdates: PromiseLike<unknown>[] = [];
           for (const pId of playerIds) {
             const current = statsMap[pId];
             const real = agg[pId] || { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0, clean_sheets: 0, matches_played: 0 };
@@ -217,6 +217,7 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
         red_cards: 0,
         clean_sheets: 0,
         notes: null,
+        is_injured: false,
       };
 
       await supabase.from('season_stats').insert(statsRow);

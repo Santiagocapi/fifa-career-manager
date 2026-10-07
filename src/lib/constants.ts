@@ -18,8 +18,9 @@ import { countries } from 'countries-list';
 const _countryNameToCode: Record<string, string> = {};
 for (const [code, data] of Object.entries(countries)) {
   _countryNameToCode[data.name.toLowerCase()] = code;
-  if ('alias' in data && Array.isArray((data as any).alias)) {
-    for (const alias of (data as any).alias as string[]) {
+  const aliases = (data as { alias?: unknown }).alias;
+  if (Array.isArray(aliases)) {
+    for (const alias of aliases as string[]) {
       _countryNameToCode[alias.toLowerCase()] = code;
     }
   }
@@ -152,7 +153,7 @@ export const POSITION_COLORS: Record<string, { bg: string; text: string; border:
 };
 
 // Get the group for a given position value
-export const getPositionGroup = (position: PlayerPosition): 'GK' | 'DEF' | 'MID' | 'FWD' => {
+export const getPositionGroup = (position: string): 'GK' | 'DEF' | 'MID' | 'FWD' => {
   return POSITIONS.find(p => p.value === position)?.group ?? 'MID';
 };
 

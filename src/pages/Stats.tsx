@@ -10,7 +10,7 @@ import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
 import { useTacticsStore } from '../store/useTacticsStore';
 import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
-import { BarChart2, Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, Check, X, Shield, Trash2, Edit2, ChevronDown, Award, ArrowLeftRight, UserCheck, UserPlus, ShieldCheck } from 'lucide-react';
+import { Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, X, Trash2, Edit2, ChevronDown, Award, ArrowLeftRight, UserCheck, UserPlus, ShieldCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
 import type { MatchWithDetails, PlayerWithStats } from '../types/database';
@@ -39,9 +39,8 @@ export default function Stats() {
     activeSeason?.id ?? null
   );
 
-  const { matches, h2hRecords, loading: matchesLoading, logMatch, updateMatch, deleteMatch } = useMatches(
-    activeSeason?.id ?? null,
-    activeCareer?.id ?? null
+  const { matches, h2hRecords, logMatch, updateMatch, deleteMatch } = useMatches(
+    activeSeason?.id ?? null
   );
 
   // Sort players by position group (GK -> DEF -> MID -> FWD)
@@ -228,7 +227,7 @@ export default function Stats() {
     });
   };
 
-  const updatePlayerEvent = (playerId: string, field: keyof PlayerMatchPerformance, value: any) => {
+  const updatePlayerEvent = <K extends keyof PlayerMatchPerformance>(playerId: string, field: K, value: PlayerMatchPerformance[K]) => {
     setPlayerEvents(prev => ({
       ...prev,
       [playerId]: {
@@ -366,101 +365,99 @@ export default function Stats() {
             <form onSubmit={handleSaveMatch} className="flex flex-col gap-5 p-4 sm:p-5 overflow-y-auto flex-1">
 
               {/* TAB 1: Score, Opponent & Competition */}
-              {(modalTab === 'score' || true) && (
-                <div className={clsx("flex flex-col gap-4", modalTab !== 'score' && "hidden sm:flex")}>
-                  {/* Opponent & Competition */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="form-group col-span-2 md:col-span-1">
-                      <label className="form-label">Opponent (Rival) *</label>
-                      <input
-                        required
-                        placeholder="e.g. Real Madrid"
-                        value={opponent}
-                        onChange={e => setOpponent(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group col-span-2 md:col-span-1">
-                      <label className="form-label">Competition</label>
-                      <div className="relative">
-                        <select
-                          value={competition}
-                          onChange={e => setCompetition(e.target.value)}
-                          className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
-                        >
-                          {COMPETITIONS.map(c => (
-                            <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-                      </div>
-                    </div>
+              <div className={clsx("flex flex-col gap-4", modalTab !== 'score' && "hidden sm:flex")}>
+                {/* Opponent & Competition */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="form-group col-span-2 md:col-span-1">
+                    <label className="form-label">Opponent (Rival) *</label>
+                    <input
+                      required
+                      placeholder="e.g. Real Madrid"
+                      value={opponent}
+                      onChange={e => setOpponent(e.target.value)}
+                    />
                   </div>
-
-                  {/* Scoreboard — big +/- buttons */}
-                  <div className="p-4 rounded-2xl bg-pitch-900/80 border border-pitch-700 shadow-md">
-                    <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4 font-medium">Match Score</p>
-                    <div className="flex items-center justify-center gap-4">
-                      {/* Your team score */}
-                      <div className="flex flex-col items-center gap-1 flex-1">
-                        <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Your Team</span>
-                        <div className="flex items-center gap-3">
-                          <button type="button"
-                            onClick={() => setTeamScore(s => Math.max(0, s - 1))}
-                            disabled={teamScore <= 0}
-                            className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
-                            <Minus size={18} />
-                          </button>
-                          <span className="text-4xl sm:text-5xl font-black text-white w-12 text-center tabular-nums">{teamScore}</span>
-                          <button type="button"
-                            onClick={() => setTeamScore(s => s + 1)}
-                            className="w-12 h-12 rounded-2xl bg-neon-400/20 hover:bg-neon-400/30 text-neon-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
-                            <Plus size={18} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Opponent score */}
-                      <div className="flex flex-col items-center gap-1 flex-1">
-                        <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
-                        <div className="flex items-center gap-3">
-                          <button type="button"
-                            onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
-                            disabled={opponentScore <= 0}
-                            className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
-                            <Minus size={18} />
-                          </button>
-                          <span className="text-4xl sm:text-5xl font-black text-red-400 w-12 text-center tabular-nums">{opponentScore}</span>
-                          <button type="button"
-                            onClick={() => handleOpponentScoreChange(opponentScore + 1)}
-                            className="w-12 h-12 rounded-2xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
-                            <Plus size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Match MVP */}
-                  <div className="form-group">
-                    <label className="form-label flex items-center gap-1.5">
-                      <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
-                    </label>
+                  <div className="form-group col-span-2 md:col-span-1">
+                    <label className="form-label">Competition</label>
                     <div className="relative">
                       <select
-                        value={mvpPlayerId}
-                        onChange={e => setMvpPlayerId(e.target.value)}
-                        className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                        value={competition}
+                        onChange={e => setCompetition(e.target.value)}
+                        className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
                       >
-                        <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
-                        {sortedPlayers.map(p => (
-                          <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
+                        {COMPETITIONS.map(c => (
+                          <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
                         ))}
                       </select>
                       <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
                     </div>
                   </div>
                 </div>
-              )}
+
+                {/* Scoreboard — big +/- buttons */}
+                <div className="p-4 rounded-2xl bg-pitch-900/80 border border-pitch-700 shadow-md">
+                  <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4 font-medium">Match Score</p>
+                  <div className="flex items-center justify-center gap-4">
+                    {/* Your team score */}
+                    <div className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Your Team</span>
+                      <div className="flex items-center gap-3">
+                        <button type="button"
+                          onClick={() => setTeamScore(s => Math.max(0, s - 1))}
+                          disabled={teamScore <= 0}
+                          className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
+                          <Minus size={18} />
+                        </button>
+                        <span className="text-4xl sm:text-5xl font-black text-white w-12 text-center tabular-nums">{teamScore}</span>
+                        <button type="button"
+                          onClick={() => setTeamScore(s => s + 1)}
+                          className="w-12 h-12 rounded-2xl bg-neon-400/20 hover:bg-neon-400/30 text-neon-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Opponent score */}
+                    <div className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
+                      <div className="flex items-center gap-3">
+                        <button type="button"
+                          onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
+                          disabled={opponentScore <= 0}
+                          className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
+                          <Minus size={18} />
+                        </button>
+                        <span className="text-4xl sm:text-5xl font-black text-red-400 w-12 text-center tabular-nums">{opponentScore}</span>
+                        <button type="button"
+                          onClick={() => handleOpponentScoreChange(opponentScore + 1)}
+                          className="w-12 h-12 rounded-2xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
+                          <Plus size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match MVP */}
+                <div className="form-group">
+                  <label className="form-label flex items-center gap-1.5">
+                    <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={mvpPlayerId}
+                      onChange={e => setMvpPlayerId(e.target.value)}
+                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
+                    >
+                      <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
+                      {sortedPlayers.map(p => (
+                        <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
 
               {/* Player Events Section: Mobile Cards OR Desktop Table */}
               <div className="flex flex-col gap-3">

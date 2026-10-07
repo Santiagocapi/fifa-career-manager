@@ -4,18 +4,14 @@
 // with authentic SVG trophy badges.
 // ============================================================
 
-import React from "react";
-import { clsx } from "clsx";
 import type { Trophy, PlayerWithStats } from "../../types/database";
 import { TrophyIcon } from "./TrophyIcons";
 import {
-  POSITION_COLORS,
-  getPositionGroup,
   getPlayerInitials,
   getPlayerAvatarGradient,
   getCountryCode,
 } from "../../lib/constants";
-import { Trophy as TrophyLucide, Award, Trash2, Crown } from "lucide-react";
+import { Trophy as TrophyLucide, Award, Trash2 } from "lucide-react";
 
 interface TrophyCabinetProps {
   trophies: Trophy[];
@@ -125,10 +121,6 @@ export default function TrophyCabinet({
               const countryCode = matchedPlayer
                 ? getCountryCode(matchedPlayer.nationality)
                 : null;
-              const group = matchedPlayer
-                ? getPositionGroup(matchedPlayer.preferred_position)
-                : "FWD";
-              const colors = POSITION_COLORS[group];
 
               return (
                 <div

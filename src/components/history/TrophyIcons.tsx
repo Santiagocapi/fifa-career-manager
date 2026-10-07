@@ -4,7 +4,6 @@
 // League Title, Cup, Ballon d'Or, Golden Boot, Golden Glove).
 // ============================================================
 
-import React from "react";
 
 export type IconicTrophyKey =
   | "champions"

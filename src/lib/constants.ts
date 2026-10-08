@@ -209,6 +209,23 @@ export const FORMATIONS: {
 ];
 
 // ============================================================
+// COMPETITIONS
+// Stored in English in matches.competition (existing rows use these
+// values) and shown in Spanish. Unknown values are shown as-is.
+// ============================================================
+export const COMPETITIONS: { value: string; label: string }[] = [
+  { value: 'League',           label: 'Liga' },
+  { value: 'Domestic Cup',     label: 'Copa nacional' },
+  { value: 'Champions League', label: 'Champions League' },
+  { value: 'Europa League',    label: 'Europa League' },
+  { value: 'Super Cup',        label: 'Supercopa' },
+  { value: 'Friendly',         label: 'Amistoso' },
+];
+
+export const getCompetitionLabel = (value: string | null | undefined): string =>
+  COMPETITIONS.find((c) => c.value === value)?.label ?? value ?? 'Liga';
+
+// ============================================================
 // SCOUTING LIST TYPES
 // ============================================================
 export const SCOUTING_LIST_TYPES: {

@@ -1,152 +1,97 @@
 // ============================================================
 // src/components/scouting/ScoutCard.tsx
-// Interactive Card for Scouted Players / Transfer Targets / Sell List.
+// Scouted player card. Actions are always visible (no hover):
+// sign to the squad, move to another list, remove.
 // ============================================================
 
-import { clsx } from "clsx";
-import type { ScoutingEntry, ScoutingListType } from "../../types/database";
-import {
-  POSITION_COLORS,
-  getPositionGroup,
-  formatValue,
-  getCountryCode,
-  SCOUTING_LIST_TYPES,
-  getOvrBadgeStyle,
-} from "../../lib/constants";
-import { Trash2, UserPlus, FileText, Building } from "lucide-react";
+import { Building2, NotebookPen, Trash2, UserPlus } from 'lucide-react';
+import type { ScoutingEntry, ScoutingListType } from '../../types/database';
+import { SCOUTING_LIST_TYPES, formatValue } from '../../lib/constants';
+import PlayerAvatar from '../player/PlayerAvatar';
+import PositionBadge from '../player/PositionBadge';
+import OvrBadge from '../player/OvrBadge';
+import Flag from '../player/Flag';
 
 interface ScoutCardProps {
   entry: ScoutingEntry;
   onMove: (id: string, newListType: ScoutingListType) => void;
-  onDelete: (id: string) => void;
+  onDelete: (entry: ScoutingEntry) => void;
+  /** Omitted when signing is not possible (e.g. no active season) */
   onSignPlayer?: (entry: ScoutingEntry) => void;
 }
 
-export default function ScoutCard({
-  entry,
-  onMove,
-  onDelete,
-  onSignPlayer,
-}: ScoutCardProps) {
-  const group = getPositionGroup(entry.position ?? "CM");
-  const colors = POSITION_COLORS[group];
-  const countryCode = getCountryCode(entry.nationality);
-  const isSellList = entry.list_type === "sell";
+export default function ScoutCard({ entry, onMove, onDelete, onSignPlayer }: ScoutCardProps) {
+  // Players on the sell list are already in the squad
+  const signPlayer = entry.list_type !== 'sell' ? onSignPlayer : undefined;
 
   return (
-    <div className="card p-3.5 flex flex-col justify-between gap-3 group hover:border-white/20 transition-all shadow-md hover:-translate-y-0.5 bg-[#0b111e]/90">
-      {/* Top Header: Name, Position, Flag, OVR & Delete */}
-      <div className="flex items-start justify-between gap-2">
+    <article className="card flex flex-col gap-3 p-3.5">
+      <div className="flex items-start gap-3">
+        <PlayerAvatar name={entry.full_name} size="md" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {entry.position && (
-              <span
-                translate="no"
-                className={clsx(
-                  "badge text-[9px] font-black px-1.5 py-0.2 rounded uppercase shadow-sm",
-                  colors.badge
-                )}
-              >
-                {entry.position}
+          <h3 className="truncate font-bold text-white" translate="no">
+            {entry.full_name}
+          </h3>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/55">
+            {entry.position && <PositionBadge position={entry.position} />}
+            <Flag nationality={entry.nationality} />
+            {entry.current_club ? (
+              <span className="flex min-w-0 items-center gap-1">
+                <Building2 size={12} className="flex-shrink-0" />
+                <span className="truncate">{entry.current_club}</span>
               </span>
+            ) : (
+              <span className="text-white/40">Sin club</span>
             )}
-            <h4 className="font-extrabold text-white text-sm truncate group-hover:text-amber-300 transition-colors">
-              {entry.full_name}
-            </h4>
-          </div>
-
-          <div className="flex items-center gap-2 mt-1">
-            {countryCode && (
-              <div className="flex items-center gap-1 text-[11px] text-white/50">
-                <img
-                  src={`https://flagcdn.com/w40/${countryCode}.png`}
-                  alt={entry.nationality ?? ""}
-                  className="w-3.5 h-2.5 object-cover rounded-[2px] shadow-sm flex-shrink-0"
-                />
-                <span className="truncate">{entry.nationality}</span>
-              </div>
-            )}
-            {entry.current_club && (
-              <span className="text-[11px] text-white/40 flex items-center gap-1 truncate">
-                <Building size={10} className="flex-shrink-0" />
-                {entry.current_club}
-              </span>
-            )}
-          </div>
+          </p>
         </div>
-
-        {/* OVR Rating Badge & Delete Action */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {entry.current_ovr ? (
-            <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-mono text-sm shadow-md transition-transform hover:scale-105", getOvrBadgeStyle(entry.current_ovr).badgeClass)}>
-              {entry.current_ovr}
-            </div>
-          ) : (
-            <div className="w-9 h-9 rounded-xl bg-pitch-700/40 border border-white/10 flex items-center justify-center font-mono font-bold text-white/30 text-xs">
-              ?
-            </div>
-          )}
-
-          <button
-            onClick={() => onDelete(entry.id)}
-            className="btn-danger p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-            title="Remove from scouting"
-          >
-            <Trash2 size={13} />
-          </button>
-        </div>
+        <OvrBadge ovr={entry.current_ovr} />
       </div>
 
-      {/* Middle Info: Valuation & Notes */}
-      <div className="flex flex-col gap-1.5 pt-1 border-t border-[#1e293b]">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">
-            Est. Value
-          </span>
-          <span className="font-mono font-extrabold text-emerald-400 text-xs">
-            {entry.estimated_value ? formatValue(entry.estimated_value) : "N/A"}
-          </span>
-        </div>
-
-        {entry.notes && (
-          <div className="flex items-start gap-1.5 p-2 rounded-xl bg-white/5 border border-white/5 mt-0.5">
-            <FileText size={12} className="text-amber-400/80 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-white/70 italic line-clamp-2 leading-relaxed">
-              "{entry.notes}"
-            </p>
-          </div>
-        )}
+      <div className="flex items-center justify-between rounded-xl bg-pitch-900/60 px-3 py-2 text-xs">
+        <span className="text-white/50">Valor estimado</span>
+        <span className="font-bold tabular-nums text-emerald-300">
+          {entry.estimated_value ? formatValue(entry.estimated_value) : 'Sin dato'}
+        </span>
       </div>
 
-      {/* Bottom Actions: Sign to Club button (if not sell list) & Category Switcher */}
-      <div className="flex flex-col gap-2 pt-2 border-t border-[#1e293b]">
-        {!isSellList && onSignPlayer && (
-          <button
-            onClick={() => onSignPlayer(entry)}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 w-full shadow-md font-bold"
-          >
-            <UserPlus size={14} /> Fichar al Club
+      {entry.notes && (
+        <p className="flex items-start gap-2 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-white/70">
+          <NotebookPen size={14} className="mt-px flex-shrink-0 text-amber-300/80" />
+          <span className="line-clamp-3">{entry.notes}</span>
+        </p>
+      )}
+
+      <div className="mt-auto flex items-center gap-2 border-t border-pitch-700 pt-3">
+        {signPlayer && (
+          <button type="button" onClick={() => signPlayer(entry)} className="btn-primary btn-sm h-10 flex-1">
+            <UserPlus size={16} /> Fichar
           </button>
         )}
-
-        {/* Move to another category pills */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none opacity-80 group-hover:opacity-100 transition-opacity">
-          <span className="text-[9px] text-white/40 uppercase font-bold mr-1 flex-shrink-0">
-            Mover:
-          </span>
+        <select
+          value=""
+          onChange={(e) => e.target.value && onMove(entry.id, e.target.value as ScoutingListType)}
+          aria-label={`Mover a ${entry.full_name} a otra lista`}
+          className="min-h-[2.5rem] min-w-0 flex-1 py-1 text-sm"
+        >
+          <option value="" disabled>
+            Mover a…
+          </option>
           {SCOUTING_LIST_TYPES.filter((t) => t.value !== entry.list_type).map((t) => (
-            <button
-              key={t.value}
-              onClick={() => onMove(entry.id, t.value)}
-              className="text-[10px] text-white/60 hover:text-white transition-colors px-2 py-0.5 rounded-md bg-[#141e33] hover:bg-amber-400/20 border border-[#223254] hover:border-amber-400/40 flex-shrink-0 flex items-center gap-1"
-              title={`Mover a ${t.label}`}
-            >
-              <span>{t.emoji}</span>
-              <span className="hidden sm:inline">{t.label.split(" ")[0]}</span>
-            </button>
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
           ))}
-        </div>
+        </select>
+        <button
+          type="button"
+          onClick={() => onDelete(entry)}
+          aria-label={`Quitar a ${entry.full_name} del seguimiento`}
+          className="icon-btn text-white/35 hover:bg-red-500/10 hover:text-red-300"
+        >
+          <Trash2 size={18} />
+        </button>
       </div>
-    </div>
+    </article>
   );
 }

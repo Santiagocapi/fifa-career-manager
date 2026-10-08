@@ -7,6 +7,7 @@
 
 import type { PlayerPosition, FormationScheme, ScoutingListType, TrophyType } from '../types/database';
 import { countries } from 'countries-list';
+import { BadgeDollarSign, Handshake, Sparkles, Target, type LucideIcon } from 'lucide-react';
 
 // ============================================================
 // COUNTRY FLAG HELPER
@@ -234,13 +235,14 @@ export const getCompetitionLabel = (value: string | null | undefined): string =>
 export const SCOUTING_LIST_TYPES: {
   value: ScoutingListType;
   label: string;
-  emoji: string;
+  description: string;
+  icon: LucideIcon;
   color: string;
 }[] = [
-  { value: 'wonderkid', label: 'Wonderkids',      emoji: '⭐', color: 'text-amber-400' },
-  { value: 'target',    label: 'Transfer Targets', emoji: '🎯', color: 'text-blue-400' },
-  { value: 'free_agent',label: 'Free Agents',      emoji: '🆓', color: 'text-emerald-400' },
-  { value: 'sell',      label: 'Players to Sell',  emoji: '💰', color: 'text-red-400' },
+  { value: 'wonderkid',  label: 'Promesas',       description: 'Jóvenes con potencial',        icon: Sparkles,        color: 'text-amber-300' },
+  { value: 'target',     label: 'Objetivos',      description: 'Fichajes que quieres cerrar',  icon: Target,          color: 'text-sky-300' },
+  { value: 'free_agent', label: 'Agentes libres', description: 'Sin club: llegan sin traspaso', icon: Handshake,       color: 'text-emerald-300' },
+  { value: 'sell',       label: 'Transferibles',  description: 'Jugadores que quieres vender', icon: BadgeDollarSign, color: 'text-red-300' },
 ];
 
 // ============================================================

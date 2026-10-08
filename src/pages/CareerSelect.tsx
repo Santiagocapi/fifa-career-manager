@@ -7,9 +7,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Plus, Trophy, Globe, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Trophy, Loader2, Trash2, MapPin, UserRound } from 'lucide-react';
 import { useCareers } from '../hooks/useCareers';
 import { useAppStore } from '../store/useAppStore';
+import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import InlineAlert from '../components/ui/InlineAlert';
+import Sheet from '../components/ui/Sheet';
+import Field from '../components/ui/Field';
+import ClubCrest from '../components/ui/ClubCrest';
+import { useConfirm } from '../components/ui/confirm';
 import type { Career, CreateCareerDto } from '../types/database';
 
 interface CareerFormData {
@@ -21,8 +28,9 @@ interface CareerFormData {
 
 export default function CareerSelect() {
   const { careers, loading, error, createCareer, deleteCareer } = useCareers();
-  const { setActiveCareer, setActiveSeason } = useAppStore();
+  const { activeCareer, setActiveCareer, setActiveSeason } = useAppStore();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -34,156 +42,161 @@ export default function CareerSelect() {
     navigate('/dashboard');
   };
 
+  const openForm = () => {
+    reset();
+    setShowForm(true);
+  };
+
   const onSubmit = async (data: CareerFormData) => {
     const dto: CreateCareerDto = {
-      club_name: data.club_name,
-      manager_name: data.manager_name,
-      league: data.league || null,
-      country: data.country || null,
+      club_name: data.club_name.trim(),
+      manager_name: data.manager_name.trim(),
+      league: data.league.trim() || null,
+      country: data.country.trim() || null,
     };
     const career = await createCareer(dto);
     if (career) {
       setActiveCareer(career);
+      setActiveSeason(null);
       reset();
       setShowForm(false);
       navigate('/dashboard');
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Don't trigger career select
-    if (!confirm('Delete this career? This cannot be undone.')) return;
-    setDeleting(id);
-    await deleteCareer(id);
+  const handleDelete = async (career: Career) => {
+    const confirmed = await confirm({
+      title: `¿Eliminar ${career.club_name}?`,
+      description: 'Se borrarán sus temporadas, jugadores, partidos y trofeos. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar carrera',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    setDeleting(career.id);
+    await deleteCareer(career.id);
+    if (activeCareer?.id === career.id) {
+      setActiveCareer(null);
+      setActiveSeason(null);
+    }
     setDeleting(null);
   };
 
   return (
-    <div className="min-h-screen bg-pitch-900 p-6">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-4xl font-black text-white mb-2">
-            Your <span className="text-neon-glow">Careers</span>
-          </h1>
-          <p className="text-white/50">Select a career to continue, or start a new one.</p>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <PageHeader
+        title="Mis carreras"
+        subtitle="Elige con qué club seguir o empieza una nueva."
+        primaryAction={{ label: 'Nueva carrera', icon: Plus, onClick: openForm }}
+      />
+
+      {error && !showForm && <InlineAlert>{error}</InlineAlert>}
+
+      {loading ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="skeleton h-[88px] rounded-2xl" />
+          ))}
         </div>
-
-        {/* Career list */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-neon-400" size={32} />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 mb-6">
-            {careers.map((career, i) => (
-              <div
-                key={career.id}
-                onClick={() => handleSelectCareer(career)}
-                className="card-hover p-5 cursor-pointer group animate-fade-in flex items-center gap-4"
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                {/* Club badge (initials) */}
-                <div className="w-14 h-14 rounded-xl bg-neon-400/10 border border-neon-400/20
-                                flex items-center justify-center text-xl font-black text-neon-400
-                                group-hover:bg-neon-400/20 transition-colors flex-shrink-0">
-                  {career.club_name.charAt(0)}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-white truncate">{career.club_name}</h3>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {career.league && (
-                      <span className="flex items-center gap-1 text-xs text-white/50">
-                        <Trophy size={11} /> {career.league}
-                      </span>
-                    )}
-                    {career.country && (
-                      <span className="flex items-center gap-1 text-xs text-white/50">
-                        <Globe size={11} /> {career.country}
-                      </span>
+      ) : careers.length === 0 ? (
+        <EmptyState
+          className="card"
+          icon={Trophy}
+          title="Todavía no tienes carreras"
+          description="Crea tu primera carrera para registrar plantilla, partidos y trofeos."
+          action={
+            <button type="button" onClick={openForm} className="btn-primary">
+              <Plus size={18} /> Crear carrera
+            </button>
+          }
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {careers.map((career) => {
+            const isActive = activeCareer?.id === career.id;
+            return (
+              <li key={career.id} className="card-interactive relative flex items-center gap-3.5 p-4">
+                {/* Whole card opens the career; the delete button sits above it */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectCareer(career)}
+                  aria-label={`Abrir la carrera de ${career.club_name}`}
+                  className="absolute inset-0 rounded-2xl"
+                />
+                <ClubCrest name={career.club_name} size={42} />
+                <div className="pointer-events-none min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate text-base font-bold text-white">{career.club_name}</h2>
+                    {isActive && (
+                      <span className="badge flex-shrink-0 border-neon-400/30 bg-neon-400/10 text-neon-300">Activa</span>
                     )}
                   </div>
-                  <p className="text-xs text-white/30 mt-0.5">Manager: {career.manager_name}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-white/55">
+                    <MapPin size={12} className="flex-shrink-0" />
+                    {[career.league, career.country].filter(Boolean).join(' · ') || 'Sin liga'}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-white/40">
+                    <UserRound size={12} className="flex-shrink-0" />
+                    {career.manager_name}
+                  </p>
                 </div>
-
                 <button
-                  onClick={(e) => handleDelete(e, career.id)}
+                  type="button"
+                  onClick={() => handleDelete(career)}
                   disabled={deleting === career.id}
-                  className="btn-danger opacity-0 group-hover:opacity-100 transition-opacity p-2"
-                  title="Delete career"
+                  aria-label={`Eliminar la carrera de ${career.club_name}`}
+                  className="icon-btn relative z-10 text-white/35 hover:bg-red-500/10 hover:text-red-300"
                 >
-                  {deleting === career.id
-                    ? <Loader2 size={16} className="animate-spin" />
-                    : <Trash2 size={16} />}
+                  {deleting === career.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                 </button>
-              </div>
-            ))}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-            {careers.length === 0 && !showForm && (
-              <div className="card p-12 text-center">
-                <Trophy size={48} className="text-white/20 mx-auto mb-4" />
-                <h3 className="text-white/50 font-medium">No careers yet</h3>
-                <p className="text-white/30 text-sm mt-1">Create your first coaching career below</p>
-              </div>
-            )}
+      <Sheet
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Nueva carrera"
+        description="Solo necesitas el club y tu nombre; lo demás es opcional."
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">
+              Cancelar
+            </button>
+            <button type="submit" form="career-form" disabled={isSubmitting} className="btn-primary flex-1">
+              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+              Crear carrera
+            </button>
           </div>
-        )}
-
-        {/* New Career Form */}
-        {showForm ? (
-          <div className="glass-card p-6 animate-fade-in">
-            <h3 className="font-bold text-white mb-4">New Career</h3>
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm mb-4">
-                {error}
-              </div>
-            )}
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-group">
-                  <label className="form-label">Club Name *</label>
-                  <input
-                    placeholder="FC Barcelona"
-                    {...register('club_name', { required: 'Required' })}
-                  />
-                  {errors.club_name && <p className="form-error">{errors.club_name.message}</p>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Manager Name *</label>
-                  <input
-                    placeholder="Your name"
-                    {...register('manager_name', { required: 'Required' })}
-                  />
-                  {errors.manager_name && <p className="form-error">{errors.manager_name.message}</p>}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">League</label>
-                  <input placeholder="La Liga" {...register('league')} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Country</label>
-                  <input placeholder="Spain" {...register('country')} />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-2">
-                <button type="submit" disabled={isSubmitting} className="btn-primary">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Create Career
-                </button>
-                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <button onClick={() => setShowForm(true)} className="btn-primary w-full justify-center py-3">
-            <Plus size={18} />
-            New Career
-          </button>
-        )}
-      </div>
+        }
+      >
+        <form id="career-form" onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4 sm:grid-cols-2">
+          {error && <InlineAlert className="sm:col-span-2">{error}</InlineAlert>}
+          <Field label="Club" required error={errors.club_name?.message}>
+            <input
+              data-autofocus
+              autoComplete="off"
+              placeholder="Racing Club"
+              {...register('club_name', { required: 'Escribe el nombre del club', validate: (v) => v.trim() !== '' || 'Escribe el nombre del club' })}
+            />
+          </Field>
+          <Field label="Entrenador" required error={errors.manager_name?.message}>
+            <input
+              autoComplete="name"
+              placeholder="Tu nombre"
+              {...register('manager_name', { required: 'Escribe tu nombre', validate: (v) => v.trim() !== '' || 'Escribe tu nombre' })}
+            />
+          </Field>
+          <Field label="Liga">
+            <input autoComplete="off" placeholder="Liga Profesional" {...register('league')} />
+          </Field>
+          <Field label="País">
+            <input autoComplete="country-name" placeholder="Argentina" {...register('country')} />
+          </Field>
+        </form>
+      </Sheet>
     </div>
   );
 }

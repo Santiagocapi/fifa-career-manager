@@ -9,6 +9,8 @@
 --
 -- Now: match_events is the single source of truth. Each function below
 -- runs in one transaction and recomputes the counters from the events.
+-- Existing counters are not touched here: correct legacy data first with
+-- supabase/scripts/legacy_played_backfill.sql, which recalculates at the end.
 -- All functions are SECURITY INVOKER, so Row Level Security still applies.
 --
 -- Counter rules (recalculate_season_stats):
@@ -261,18 +263,3 @@ GRANT EXECUTE ON FUNCTION public._insert_match_events(UUID, UUID, JSONB) TO auth
 GRANT EXECUTE ON FUNCTION public.log_match(UUID, TEXT, TEXT, INT, INT, UUID, DATE, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_match(UUID, TEXT, TEXT, INT, INT, UUID, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_match(UUID) TO authenticated;
-
--- ------------------------------------------------------------
--- One-time correction of existing data: rebuild the counters of every
--- season that has logged matches. Seasons without matches are left
--- alone so manually entered stats are not wiped. Safe to re-run: the
--- result only depends on match_events.
--- ------------------------------------------------------------
-DO $$
-DECLARE
-  s RECORD;
-BEGIN
-  FOR s IN SELECT DISTINCT season_id FROM matches LOOP
-    PERFORM recalculate_season_stats(s.season_id);
-  END LOOP;
-END $$;

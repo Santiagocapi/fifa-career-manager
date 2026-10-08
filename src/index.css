@@ -9,6 +9,11 @@
   :root {
     --color-neon: theme('colors.neon.400');
     --color-electric: theme('colors.electric.400');
+    /* Recharts takes colors as props, so the chart palette lives here */
+    --chart-grid: theme('colors.pitch.700');
+    --chart-text: theme('colors.white / 55%');
+    --chart-cursor: theme('colors.white / 4%');
+    --chart-tooltip: theme('colors.pitch.850');
   }
 
   html {
@@ -197,6 +202,7 @@
     touch-action: manipulation;
   }
   .chip[aria-pressed='true'],
+  .chip[aria-checked='true'],
   .chip-active {
     @apply border-neon-400/50 bg-neon-400/15 text-neon-300;
   }

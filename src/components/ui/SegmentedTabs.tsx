@@ -53,12 +53,18 @@ export default function SegmentedTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(item.value)}
             className={clsx(
-              'inline-flex h-10 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 text-sm font-semibold transition-colors duration-150',
+              'inline-flex h-10 flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 text-sm font-semibold transition-colors duration-150 sm:px-3.5',
               fullWidth && 'flex-1',
               active ? 'bg-pitch-600 text-white shadow-sm' : 'text-white/55 hover:text-white'
             )}
           >
-            {Icon && <Icon size={16} className={active ? 'text-neon-400' : undefined} />}
+            {Icon && (
+              <Icon
+                size={16}
+                // Full-width tabs must fit on a phone: icons only from sm up
+                className={clsx(fullWidth && 'hidden sm:block', active && 'text-neon-400')}
+              />
+            )}
             {item.label}
             {item.count !== undefined && (
               <span

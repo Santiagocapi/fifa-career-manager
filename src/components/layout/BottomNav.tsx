@@ -1,57 +1,67 @@
 // ============================================================
 // src/components/layout/BottomNav.tsx
-// Mobile bottom navigation bar — shown only on small screens (md:hidden).
-// Mirrors the same nav items as the desktop sidebar.
+// Mobile bottom navigation (md:hidden): four main sections and a
+// "Más" tab, which keeps every target wide enough for a thumb.
 // ============================================================
 
-import { NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard, Users, Crosshair, BarChart2,
-  Telescope, Trophy,
-} from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Menu, type LucideIcon } from 'lucide-react';
 import { clsx } from 'clsx';
-
-const NAV_ITEMS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-  { to: '/squad',     icon: Users,           label: 'Squad' },
-  { to: '/tactics',   icon: Crosshair,       label: 'Tactics' },
-  { to: '/stats',     icon: BarChart2,       label: 'Stats' },
-  { to: '/scouting',  icon: Telescope,       label: 'Scout' },
-  { to: '/history',   icon: Trophy,          label: 'History' },
-];
+import { NAV_ITEMS } from './navItems';
+import MoreSheet from './MoreSheet';
 
 export default function BottomNav() {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { pathname } = useLocation();
+  const moreActive = NAV_ITEMS.some((item) => !item.primary && pathname.startsWith(item.to));
+
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
-      <div className="bg-pitch-800/95 backdrop-blur-xl border-t border-pitch-700 flex items-stretch">
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) => clsx(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-center transition-colors',
-              isActive
-                ? 'text-neon-400'
-                : 'text-white/40 hover:text-white/70'
-            )}
-          >
-            {({ isActive }) => (
-              <>
-                <div className={clsx(
-                  'w-8 h-8 rounded-xl flex items-center justify-center transition-colors',
-                  isActive ? 'bg-neon-400/15' : ''
-                )}>
-                  <Icon size={18} />
-                </div>
-                <span className="text-[10px] font-medium leading-none">{label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+    <>
+      <nav
+        aria-label="Navegación principal"
+        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-pitch-700 bg-pitch-850/95 backdrop-blur-xl md:hidden"
+      >
+        <ul className="grid h-16 grid-cols-5">
+          {NAV_ITEMS.filter((item) => item.primary).map((item) => (
+            <li key={item.to}>
+              <NavLink to={item.to} className="block h-full">
+                {({ isActive }) => <TabContent icon={item.icon} label={item.label} active={isActive} />}
+              </NavLink>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              aria-haspopup="dialog"
+              className="block h-full w-full"
+            >
+              <TabContent icon={Menu} label="Más" active={moreActive} />
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+    </>
+  );
+}
+
+function TabContent({ icon: Icon, label, active }: { icon: LucideIcon; label: string; active: boolean }) {
+  return (
+    <span className="flex h-full flex-col items-center justify-center gap-1">
+      <span
+        className={clsx(
+          'flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-150',
+          active ? 'bg-neon-400/15 text-neon-400' : 'text-white/55'
+        )}
+      >
+        <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+      </span>
+      <span className={clsx('text-[11px] font-semibold leading-none', active ? 'text-white' : 'text-white/55')}>
+        {label}
+      </span>
+    </span>
   );
 }

@@ -1,40 +1,72 @@
 // ============================================================
 // src/components/layout/AppLayout.tsx
-// The main shell: sidebar + content area.
-// On mobile: sidebar is hidden, BottomNav is shown instead.
+// The main shell. Desktop: sidebar + content. Phones: sticky top
+// bar with the active career, content and bottom navigation.
 // <Outlet /> is where React Router renders the current page.
 // ============================================================
 
-import { Outlet } from 'react-router-dom';
+import { Suspense, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeftRight, Loader2 } from 'lucide-react';
+import { clsx } from 'clsx';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import MobileTopBar from './MobileTopBar';
+import EmptyState from '../ui/EmptyState';
 import { useAppStore } from '../../store/useAppStore';
-import { clsx } from 'clsx';
 
 export default function AppLayout() {
-  const { sidebarCollapsed } = useAppStore();
+  const { sidebarCollapsed, activeCareer } = useAppStore();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  // Every section except the career list works on the active career
+  const needsCareer = !activeCareer && pathname !== '/careers';
+
+  // A new section always starts at the top (BrowserRouter keeps the scroll)
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-pitch-900 overflow-x-hidden">
-      {/* Sidebar — fixed on the left, hidden on mobile */}
+    <div className="min-h-dvh">
       <Sidebar />
 
-      {/* Main content area — shifts right when sidebar is open (desktop only) */}
-      <main className={clsx(
-        'flex-1 transition-all duration-300 min-h-screen min-w-0',
-        // Desktop: shift right to clear the sidebar
-        'md:' + (sidebarCollapsed ? 'ml-[72px]' : 'ml-[240px]'),
-        // Mobile: no left margin, but add bottom padding to clear the bottom nav
-        'ml-0 pb-20 md:pb-0'
-      )}>
-        <div className="p-4 md:p-6 max-w-[1400px] mx-auto min-w-0">
-          {/* Outlet renders the matched child route component */}
-          <Outlet />
-        </div>
-      </main>
+      <div className={clsx('transition-[padding] duration-200', sidebarCollapsed ? 'md:pl-[76px]' : 'md:pl-[248px]')}>
+        <MobileTopBar />
 
-      {/* Bottom navigation — mobile only */}
+        {/* Bottom padding keeps the last item clear of the bottom nav and the floating button */}
+        <main className="mx-auto w-full max-w-[1400px] px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 md:px-8 md:pb-12 md:pt-8">
+          {needsCareer ? (
+            <EmptyState
+              icon={ArrowLeftRight}
+              title="No hay ninguna carrera seleccionada"
+              description="Elige una de tus carreras o crea una nueva para empezar."
+              action={
+                <button type="button" onClick={() => navigate('/careers')} className="btn-primary">
+                  Ver mis carreras
+                </button>
+              }
+            />
+          ) : (
+            <Suspense fallback={<PageLoader />}>
+              <div key={pathname} className="animate-fade-in">
+                <Outlet />
+              </div>
+            </Suspense>
+          )}
+        </main>
+      </div>
+
       <BottomNav />
+    </div>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="flex justify-center py-24" role="status" aria-label="Cargando">
+      <Loader2 className="animate-spin text-neon-400" size={28} />
     </div>
   );
 }

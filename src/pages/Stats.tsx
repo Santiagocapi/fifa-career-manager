@@ -1,36 +1,31 @@
 // ============================================================
 // src/pages/Stats.tsx
-// Performance stats, Match Logger & Editor (Opponent, Competition,
-// Score, MVP, Player Events), Head-to-Head (H2H) records, and Leaderboards.
+// Matches of the season and their stats: match list (tap to
+// edit), player leaderboard, MVPs, chart and head-to-head.
+// Logging a match happens in MatchLoggerSheet.
 // ============================================================
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { CalendarPlus, ListOrdered, Plus, Swords, Users } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
 import { useMatches } from '../hooks/useMatches';
-import { useTacticsStore } from '../store/useTacticsStore';
-import { POSITION_COLORS, getPositionGroup, sortPlayersByPosition, getCountryCode, getOvrBadgeStyle } from '../lib/constants';
-import { Plus, Minus, Loader2, Trophy, Swords, Star, Calendar, X, Trash2, Edit2, ChevronDown, Award, ArrowLeftRight, UserCheck, UserPlus, ShieldCheck } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { clsx } from 'clsx';
-import type { MatchWithDetails, PlayerWithStats } from '../types/database';
+import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import InlineAlert from '../components/ui/InlineAlert';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import SeasonRecord from '../components/matches/SeasonRecord';
+import MatchListItem from '../components/matches/MatchListItem';
+import MatchLoggerSheet, { type MatchFormPayload } from '../components/matches/MatchLoggerSheet';
+import Leaderboard from '../components/matches/Leaderboard';
+import MvpRanking from '../components/matches/MvpRanking';
+import GoalsChart from '../components/matches/GoalsChart';
+import H2HTable from '../components/matches/H2HTable';
+import { rankMvps } from '../components/matches/matchStats';
+import type { MatchWithDetails } from '../types/database';
 
-interface PlayerMatchPerformance {
-  player_id: string;
-  played: boolean;
-  is_starter: boolean;
-  substituted_off: boolean;
-  substituted_in: boolean;
-  replaced_player_id: string | null;
-  goals: number;
-  assists: number;
-  yellow_card: boolean;
-  red_card: boolean;
-  clean_sheet: boolean;
-  injured: boolean;
-}
-
-const COMPETITIONS = ['League', 'Domestic Cup', 'Champions League', 'Europa League', 'Super Cup', 'Friendly'];
+type StatsTab = 'matches' | 'players' | 'rivals';
 
 export default function Stats() {
   const { activeCareer, activeSeason } = useAppStore();
@@ -38,1103 +33,207 @@ export default function Stats() {
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );
-
-  const { matches, h2hRecords, logMatch, updateMatch, deleteMatch } = useMatches(
+  const { matches, h2hRecords, loading: matchesLoading, error, logMatch, updateMatch, deleteMatch } = useMatches(
     activeSeason?.id ?? null
   );
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Sort players by position group (GK -> DEF -> MID -> FWD)
-  const sortedPlayers = sortPlayersByPosition(players);
-
-  // Top 5 MVPs of the active season
-  const topMVPs = useMemo(() => {
-    const mvpCounts: Record<string, { player: PlayerWithStats; count: number }> = {};
-    matches.forEach(m => {
-      if (m.mvp_player_id) {
-        const player = players.find(p => p.id === m.mvp_player_id);
-        if (player) {
-          if (!mvpCounts[m.mvp_player_id]) {
-            mvpCounts[m.mvp_player_id] = { player, count: 0 };
-          }
-          mvpCounts[m.mvp_player_id].count += 1;
-        }
-      }
-    });
-    return Object.values(mvpCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [matches, players]);
-
-
-  const [logging, setLogging] = useState(false);
+  const [tab, setTab] = useState<StatsTab>('matches');
+  const [loggerOpen, setLoggerOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<MatchWithDetails | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  // Match Form state
-  const [modalTab, setModalTab] = useState<'score' | 'starters' | 'bench'>('score');
-  const [opponent, setOpponent] = useState('');
-  const [competition, setCompetition] = useState('League');
-  const [teamScore, setTeamScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState(0);
-  const [mvpPlayerId, setMvpPlayerId] = useState<string>('');
-  const [playerEvents, setPlayerEvents] = useState<Record<string, PlayerMatchPerformance>>({});
+  // A closed season is read-only
+  const readOnly = activeSeason?.is_closed ?? false;
+  const canLog = !!activeSeason && !readOnly && !playersLoading;
+  const mvpRanking = useMemo(() => rankMvps(matches, players), [matches, players]);
+  const knownOpponents = useMemo(() => h2hRecords.map((r) => r.opponent), [h2hRecords]);
 
-  const recalculateCleanSheets = (scoreAgainst: number, currentEvents: Record<string, PlayerMatchPerformance>) => {
-    const updated = { ...currentEvents };
-    Object.keys(updated).forEach(pId => {
-      const p = players.find(x => x.id === pId);
-      const ev = updated[pId];
-      if (!p || !ev) return;
-
-      const group = getPositionGroup(p.preferred_position);
-      const isDefOrGk = group === 'GK' || group === 'DEF';
-
-      if (scoreAgainst === 0 && isDefOrGk) {
-        // Automatic clean sheet credited to GK & DEF who played and were NOT subbed off, OR who entered as subs
-        if (ev.played && !ev.substituted_off) {
-          ev.clean_sheet = true;
-        } else if (ev.substituted_in) {
-          ev.clean_sheet = true;
-        } else {
-          ev.clean_sheet = false;
-        }
-      } else {
-        ev.clean_sheet = false;
-      }
-    });
-    return updated;
-  };
-
-  const handleOpenAddModal = () => {
+  const openNewMatch = () => {
     setEditingMatch(null);
-    setModalTab('score');
-    setOpponent('');
-    setCompetition('League');
-    setTeamScore(0);
-    setOpponentScore(0);
-    setMvpPlayerId('');
-
-    // Fetch Starting XI player IDs from tactics store for active season
-    const seasonId = activeSeason?.id ?? 'default';
-    const lineupIds = useTacticsStore.getState().lineups[seasonId] ?? [];
-    const starterSet = new Set(lineupIds.filter(Boolean) as string[]);
-
-    // Fallback: pick top 11 by position fit if tactics lineup is empty
-    if (starterSet.size === 0 && players.length > 0) {
-      sortedPlayers.slice(0, 11).forEach(p => starterSet.add(p.id));
-    }
-
-    const initialEvents: Record<string, PlayerMatchPerformance> = {};
-    players.forEach(p => {
-      const isStarter = starterSet.has(p.id);
-      initialEvents[p.id] = {
-        player_id: p.id,
-        played: isStarter,
-        is_starter: isStarter,
-        substituted_off: false,
-        substituted_in: false,
-        replaced_player_id: null,
-        goals: 0,
-        assists: 0,
-        yellow_card: false,
-        red_card: false,
-        clean_sheet: false,
-        injured: p.stats?.is_injured ?? false,
-      };
-    });
-
-    const withCleanSheets = recalculateCleanSheets(0, initialEvents);
-    setPlayerEvents(withCleanSheets);
-    setLogging(true);
+    setLoggerOpen(true);
   };
 
-  const handleOpenEditModal = (match: MatchWithDetails) => {
-    setEditingMatch(match);
-    setModalTab('score');
-    setOpponent(match.opponent);
-    setCompetition(match.competition || 'League');
-    setTeamScore(match.team_score);
-    setOpponentScore(match.opponent_score);
-    setMvpPlayerId(match.mvp_player_id || '');
+  // "Registrar partido" from other screens lands here with this flag. It waits
+  // for the squad to load, since the logger is pre-filled with the players.
+  useEffect(() => {
+    const state = location.state as { openLogger?: boolean } | null;
+    if (!state?.openLogger || !canLog) return;
+    setEditingMatch(null);
+    setLoggerOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, canLog, navigate]);
 
-    const seasonId = activeSeason?.id ?? 'default';
-    const lineupIds = useTacticsStore.getState().lineups[seasonId] ?? [];
-    const starterSet = new Set(lineupIds.filter(Boolean) as string[]);
-
-    const eventsMap: Record<string, PlayerMatchPerformance> = {};
-    players.forEach(p => {
-      const existingEv = match.events.find(e => e.player_id === p.id);
-      const isStarter = starterSet.has(p.id);
-      // Every squad player gets an event row (played true or false), so the stored flag wins
-      const didPlay = existingEv ? existingEv.played : isStarter;
-
-      eventsMap[p.id] = {
-        player_id: p.id,
-        played: didPlay,
-        is_starter: isStarter,
-        substituted_off: false,
-        substituted_in: false,
-        replaced_player_id: null,
-        goals: existingEv?.goals || 0,
-        assists: existingEv?.assists || 0,
-        yellow_card: existingEv?.yellow_card || false,
-        red_card: existingEv?.red_card || false,
-        clean_sheet: existingEv?.clean_sheet || false,
-        injured: existingEv?.injured || false,
-      };
-    });
-
-    setPlayerEvents(eventsMap);
-    setLogging(true);
+  const handleSave = async (payload: MatchFormPayload) => {
+    const saved = editingMatch ? await updateMatch(editingMatch.id, payload) : await logMatch(payload);
+    if (saved) refetchPlayers();
+    return saved;
   };
 
-  const handleOpponentScoreChange = (newScore: number) => {
-    setOpponentScore(newScore);
-    setPlayerEvents(prev => recalculateCleanSheets(newScore, prev));
-  };
-
-  const handleStarterSubstitutedOff = (starterId: string, subBenchPlayerId: string) => {
-    setPlayerEvents(prev => {
-      const updated = { ...prev };
-      const starterEv = updated[starterId];
-      if (!starterEv) return prev;
-
-      // If previous sub was selected, reset that sub
-      if (starterEv.replaced_player_id && updated[starterEv.replaced_player_id]) {
-        const prevSubEv = updated[starterEv.replaced_player_id];
-        prevSubEv.played = false;
-        prevSubEv.substituted_in = false;
-        prevSubEv.replaced_player_id = null;
-      }
-
-      if (!subBenchPlayerId) {
-        // Clear substitution
-        starterEv.substituted_off = false;
-        starterEv.replaced_player_id = null;
-      } else {
-        // Set substitution
-        starterEv.substituted_off = true;
-        starterEv.replaced_player_id = subBenchPlayerId;
-
-        if (updated[subBenchPlayerId]) {
-          const newSubEv = updated[subBenchPlayerId];
-          newSubEv.played = true;
-          newSubEv.substituted_in = true;
-          newSubEv.replaced_player_id = starterId;
-        }
-      }
-
-      return recalculateCleanSheets(opponentScore, updated);
-    });
-  };
-
-  const updatePlayerEvent = <K extends keyof PlayerMatchPerformance>(playerId: string, field: K, value: PlayerMatchPerformance[K]) => {
-    setPlayerEvents(prev => ({
-      ...prev,
-      [playerId]: {
-        ...prev[playerId],
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleSaveMatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!opponent.trim()) return;
-
-    setSubmitting(true);
-    // Send every player's event; `played` decides who gets a match played
-    const allEvents = Object.values(playerEvents);
-
-    const payload = {
-      opponent: opponent.trim(),
-      competition: competition || 'League',
-      team_score: Number(teamScore) || 0,
-      opponent_score: Number(opponentScore) || 0,
-      mvp_player_id: mvpPlayerId || null,
-      playerEvents: allEvents,
-    };
-
-    let success = false;
-    if (editingMatch) {
-      success = await updateMatch(editingMatch.id, payload);
-    } else {
-      success = await logMatch(payload);
-    }
-
-    if (success) {
-      refetchPlayers();
-      setLogging(false);
-      setEditingMatch(null);
-    }
-    setSubmitting(false);
-  };
-
-  // Prepare chart data: top 10 players by goals
-  const chartData = [...players]
-    .filter(p => (p.stats?.goals ?? 0) > 0 || (p.stats?.assists ?? 0) > 0)
-    .sort((a, b) => (b.stats?.goals ?? 0) - (a.stats?.goals ?? 0))
-    .slice(0, 10)
-    .map(p => ({
-      name: p.full_name.split(' ').pop() ?? p.full_name,
-      goals: p.stats?.goals ?? 0,
-      assists: p.stats?.assists ?? 0,
-    }));
-
-  const handleDeleteMatch = async (matchId: string) => {
-    if (!confirm('Delete this match? Player statistics from this match will be reverted.')) return;
-    await deleteMatch(matchId);
+  const handleDelete = async (match: MatchWithDetails) => {
+    await deleteMatch(match.id);
     refetchPlayers();
   };
 
+  if (!activeSeason) {
+    return (
+      <div className="flex flex-col gap-5">
+        <PageHeader title="Partidos" />
+        <EmptyState
+          className="card"
+          icon={CalendarPlus}
+          title="No hay ninguna temporada en curso"
+          description="Crea la temporada desde Inicio para empezar a registrar partidos."
+          action={
+            <Link to="/dashboard" className="btn-primary">
+              Ir a Inicio
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
-      {/* Page Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-3xl font-black text-white truncate">Match Logger & Performance</h1>
-          <p className="text-white/50 text-sm mt-1">{activeSeason?.year_label ?? 'No active season'}</p>
-        </div>
-        <button onClick={handleOpenAddModal} className="btn-primary flex-shrink-0" disabled={!activeSeason}>
-          <Plus size={16} /> Log Match
-        </button>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Partidos"
+        subtitle={`Temporada ${activeSeason.year_label}`}
+        primaryAction={{ label: 'Registrar partido', icon: Plus, onClick: openNewMatch, disabled: !canLog }}
+      />
 
-      {/* Match Logger / Editor Modal */}
-      {logging && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex flex-col md:items-center md:justify-center md:p-4">
-          <div className="glass-card w-full md:max-w-2xl flex flex-col h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-2xl animate-fade-in">
+      {error && !loggerOpen && <InlineAlert>{error}</InlineAlert>}
 
-            {/* Modal header */}
-            <div className="flex flex-col border-b border-pitch-700 flex-shrink-0">
-              <div className="flex items-center justify-between p-4 md:p-5 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-neon-400/10 border border-neon-400/20 flex items-center justify-center flex-shrink-0">
-                    <Swords size={20} className="text-neon-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-base md:text-lg">
-                      {editingMatch ? 'Edit Match Details' : 'Log Match Details'}
-                    </h3>
-                    <p className="text-white/40 text-xs hidden md:block">Record score, opponent, competition, MVP & player stats</p>
-                  </div>
-                </div>
-                <button onClick={() => setLogging(false)} className="btn-ghost p-2"><X size={18} /></button>
+      <SegmentedTabs
+        ariaLabel="Secciones de partidos"
+        fullWidth
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: 'matches', label: 'Partidos', icon: Swords, count: matches.length },
+          { value: 'players', label: 'Jugadores', icon: Users },
+          { value: 'rivals', label: 'Rivales', icon: ListOrdered, count: h2hRecords.length },
+        ]}
+      />
+
+      {tab === 'matches' && (
+        <div className="flex flex-col gap-5">
+          <SeasonRecord matches={matches} loading={matchesLoading} />
+
+          <section className="card p-2 sm:p-3" aria-label="Partidos de la temporada">
+            {matchesLoading ? (
+              <div className="flex flex-col gap-2 p-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="skeleton h-14 rounded-xl" />
+                ))}
               </div>
-
-              {/* Mobile Step Navigation Tabs */}
-              <div className="flex items-center gap-1 px-4 pb-3 overflow-x-auto scrollbar-none border-t border-pitch-700/50 pt-2.5">
-                <button
-                  type="button"
-                  onClick={() => setModalTab('score')}
-                  className={clsx(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
-                    modalTab === 'score'
-                      ? "bg-amber-400 text-slate-950 font-black shadow-md"
-                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
-                  )}
-                >
-                  <Trophy size={14} /> 1. Resultado & MVP
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('starters')}
-                  className={clsx(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
-                    modalTab === 'starters'
-                      ? "bg-emerald-400 text-slate-950 font-black shadow-md"
-                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
-                  )}
-                >
-                  <UserCheck size={14} /> 2. Titulares (11)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('bench')}
-                  className={clsx(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 flex-1 justify-center whitespace-nowrap",
-                    modalTab === 'bench'
-                      ? "bg-cyan-400 text-slate-950 font-black shadow-md"
-                      : "bg-pitch-900/80 text-white/60 hover:text-white border border-pitch-700"
-                  )}
-                >
-                  <UserPlus size={14} /> 3. Suplentes
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveMatch} className="flex flex-col gap-5 p-4 sm:p-5 overflow-y-auto flex-1">
-
-              {/* TAB 1: Score, Opponent & Competition */}
-              <div className={clsx("flex flex-col gap-4", modalTab !== 'score' && "hidden sm:flex")}>
-                {/* Opponent & Competition */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="form-group col-span-2 md:col-span-1">
-                    <label className="form-label">Opponent (Rival) *</label>
-                    <input
-                      required
-                      placeholder="e.g. Real Madrid"
-                      value={opponent}
-                      onChange={e => setOpponent(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group col-span-2 md:col-span-1">
-                    <label className="form-label">Competition</label>
-                    <div className="relative">
-                      <select
-                        value={competition}
-                        onChange={e => setCompetition(e.target.value)}
-                        className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-neon-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
-                      >
-                        {COMPETITIONS.map(c => (
-                          <option key={c} value={c} className="bg-pitch-900 text-white">{c}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Scoreboard — big +/- buttons */}
-                <div className="p-4 rounded-2xl bg-pitch-900/80 border border-pitch-700 shadow-md">
-                  <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4 font-medium">Match Score</p>
-                  <div className="flex items-center justify-center gap-4">
-                    {/* Your team score */}
-                    <div className="flex flex-col items-center gap-1 flex-1">
-                      <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Your Team</span>
-                      <div className="flex items-center gap-3">
-                        <button type="button"
-                          onClick={() => setTeamScore(s => Math.max(0, s - 1))}
-                          disabled={teamScore <= 0}
-                          className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
-                          <Minus size={18} />
-                        </button>
-                        <span className="text-4xl sm:text-5xl font-black text-white w-12 text-center tabular-nums">{teamScore}</span>
-                        <button type="button"
-                          onClick={() => setTeamScore(s => s + 1)}
-                          className="w-12 h-12 rounded-2xl bg-neon-400/20 hover:bg-neon-400/30 text-neon-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
-                          <Plus size={18} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Opponent score */}
-                    <div className="flex flex-col items-center gap-1 flex-1">
-                      <span className="text-[11px] text-white/50 uppercase tracking-wider font-medium">Opponent</span>
-                      <div className="flex items-center gap-3">
-                        <button type="button"
-                          onClick={() => handleOpponentScoreChange(Math.max(0, opponentScore - 1))}
-                          disabled={opponentScore <= 0}
-                          className="w-12 h-12 rounded-2xl bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors text-xl font-bold shadow-sm">
-                          <Minus size={18} />
-                        </button>
-                        <span className="text-4xl sm:text-5xl font-black text-red-400 w-12 text-center tabular-nums">{opponentScore}</span>
-                        <button type="button"
-                          onClick={() => handleOpponentScoreChange(opponentScore + 1)}
-                          className="w-12 h-12 rounded-2xl bg-red-400/10 hover:bg-red-400/20 text-red-400 flex items-center justify-center transition-colors text-xl font-bold shadow-sm">
-                          <Plus size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Match MVP */}
-                <div className="form-group">
-                  <label className="form-label flex items-center gap-1.5">
-                    <Star size={14} className="text-amber-400" /> Match MVP (Player of the Match)
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={mvpPlayerId}
-                      onChange={e => setMvpPlayerId(e.target.value)}
-                      className="w-full bg-pitch-900 border border-pitch-700 hover:border-pitch-600 focus:border-amber-400/60 text-white text-sm rounded-xl px-3.5 py-2.5 pr-10 outline-none transition-all cursor-pointer appearance-none font-medium"
-                    >
-                      <option value="" className="bg-pitch-900 text-white/50">Select MVP (Optional)</option>
-                      {sortedPlayers.map(p => (
-                        <option key={p.id} value={p.id} className="bg-pitch-900 text-white">{p.full_name} ({p.preferred_position})</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Player Events Section: Mobile Cards OR Desktop Table */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                      <UserCheck size={16} className="text-emerald-400" />
-                      Player Match Performances
-                    </h4>
-                    <p className="text-[11px] text-white/50 mt-0.5">
-                      Starting XI automatically counts toward Matches Played.
-                    </p>
-                  </div>
-                  {opponentScore === 0 && (
-                    <span className="badge bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] uppercase font-bold flex items-center gap-1">
-                      <ShieldCheck size={12} /> Auto Clean Sheets
-                    </span>
-                  )}
-                </div>
-
-                {/* MOBILE VIEW (< sm): Touch-Friendly Player Cards */}
-                <div className="block sm:hidden space-y-3">
-                  {sortedPlayers
-                    .filter(p => {
-                      const isStarter = playerEvents[p.id]?.is_starter;
-                      if (modalTab === 'starters') return isStarter;
-                      if (modalTab === 'bench') return !isStarter;
-                      return true; // on score tab, show all
-                    })
-                    .map(p => {
-                      const ev = playerEvents[p.id] || {
-                        player_id: p.id,
-                        played: false,
-                        is_starter: false,
-                        substituted_off: false,
-                        substituted_in: false,
-                        replaced_player_id: null,
-                        goals: 0,
-                        assists: 0,
-                        yellow_card: false,
-                        red_card: false,
-                        clean_sheet: false,
-                        injured: false,
-                      };
-
-                      const group = getPositionGroup(p.preferred_position);
-                      const colors = POSITION_COLORS[group];
-                      const availableBench = sortedPlayers.filter(
-                        b => !playerEvents[b.id]?.is_starter && !b.stats?.is_injured
-                      );
-                      const ovr = p.stats?.ovr_end ?? p.stats?.ovr_start ?? 75;
-                      const ovrStyle = getOvrBadgeStyle(ovr);
-
-                      return (
-                        <div
-                          key={p.id}
-                          className={clsx(
-                            "p-3.5 rounded-2xl border flex flex-col gap-3 transition-all",
-                            ev.injured
-                              ? "opacity-40 bg-red-950/10 border-red-900/30"
-                              : ev.is_starter
-                              ? "bg-[#0b111e]/90 border-emerald-500/30"
-                              : ev.played
-                              ? "bg-[#0b111e]/90 border-cyan-500/30"
-                              : "bg-[#0b111e]/50 border-pitch-700/60 opacity-80"
-                          )}
-                        >
-                          {/* Card Header: Name, Position, OVR & Starter/Bench badge */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span translate="no" className={clsx("badge text-[9px] font-black px-1.5 py-0.2 rounded uppercase shadow-sm", colors.badge)}>
-                                {p.preferred_position}
-                              </span>
-                              <span className="font-extrabold text-white text-sm truncate">{p.full_name}</span>
-                              {ev.is_starter && (
-                                <span className="text-[9px] text-emerald-400 font-extrabold bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.2 rounded flex-shrink-0">
-                                  STARTER
-                                </span>
-                              )}
-                              {ev.injured && (
-                                <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.2 rounded flex-shrink-0">INJ</span>
-                              )}
-                            </div>
-
-                            <div className={clsx("w-8 h-8 rounded-xl flex items-center justify-center font-mono font-black text-xs shadow-sm flex-shrink-0", ovrStyle.badgeClass)}>
-                              {ovr}
-                            </div>
-                          </div>
-
-                          {/* Substitution / Bench Entry Controls */}
-                          {ev.is_starter ? (
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-pitch-700/50">
-                              <span className="text-[11px] text-white/50 font-medium">Sustituido por:</span>
-                              <select
-                                value={ev.replaced_player_id || ''}
-                                onChange={(e) => handleStarterSubstitutedOff(p.id, e.target.value)}
-                                className="bg-[#141e33] border border-pitch-700 text-white text-xs rounded-xl px-2.5 py-1 outline-none flex-1 max-w-[180px]"
-                              >
-                                <option value="">No subbed off</option>
-                                {availableBench.map(b => (
-                                  <option key={b.id} value={b.id} className="bg-pitch-900 text-white">
-                                    {b.full_name} ({b.preferred_position})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-pitch-700/50">
-                              <span className="text-[11px] text-white/50 font-medium">Participación:</span>
-                              <button
-                                type="button"
-                                disabled={ev.injured}
-                                onClick={() => updatePlayerEvent(p.id, 'played', !ev.played)}
-                                className={clsx(
-                                  "px-3 py-1 rounded-xl text-xs font-extrabold transition-all border flex items-center gap-1.5",
-                                  ev.played
-                                    ? "bg-cyan-400/20 border-cyan-400/40 text-cyan-300 shadow-sm"
-                                    : "bg-pitch-700/60 border-transparent text-white/40 hover:text-white"
-                                )}
-                              >
-                                {ev.played ? <UserCheck size={12} /> : <UserPlus size={12} />}
-                                {ev.played ? "▶ Entró al Partido" : "Did Not Play"}
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Quick Stats Touch Counters & Cards (if played) */}
-                          {ev.played && (
-                            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-pitch-700/50 items-center">
-                              {/* Goals */}
-                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
-                                <span className="text-[9px] text-white/40 uppercase font-bold">⚽ Goles</span>
-                                <div className="flex items-center justify-center gap-1">
-                                  <button type="button" disabled={ev.injured || ev.goals <= 0}
-                                    onClick={() => updatePlayerEvent(p.id, 'goals', Math.max(0, ev.goals - 1))}
-                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white flex items-center justify-center font-bold">
-                                    -
-                                  </button>
-                                  <span className="w-4 text-center font-extrabold text-neon-400 text-sm">{ev.goals}</span>
-                                  <button type="button" disabled={ev.injured}
-                                    onClick={() => updatePlayerEvent(p.id, 'goals', ev.goals + 1)}
-                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-neon-400/20 text-neon-400 flex items-center justify-center font-bold">
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Assists */}
-                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
-                                <span className="text-[9px] text-white/40 uppercase font-bold">🅰️ Asist</span>
-                                <div className="flex items-center justify-center gap-1">
-                                  <button type="button" disabled={ev.injured || ev.assists <= 0}
-                                    onClick={() => updatePlayerEvent(p.id, 'assists', Math.max(0, ev.assists - 1))}
-                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white flex items-center justify-center font-bold">
-                                    -
-                                  </button>
-                                  <span className="w-4 text-center font-extrabold text-electric-400 text-sm">{ev.assists}</span>
-                                  <button type="button" disabled={ev.injured}
-                                    onClick={() => updatePlayerEvent(p.id, 'assists', ev.assists + 1)}
-                                    className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-electric-400/20 text-electric-400 flex items-center justify-center font-bold">
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Yellow & Red Cards */}
-                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
-                                <span className="text-[9px] text-white/40 uppercase font-bold">Tarjetas</span>
-                                <div className="flex items-center justify-center gap-1">
-                                  <button type="button" disabled={ev.injured}
-                                    onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
-                                    className={clsx("w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.yellow_card ? "bg-amber-400 text-pitch-900" : "bg-pitch-700 text-white/30")}>
-                                    🟨
-                                  </button>
-                                  <button type="button" disabled={ev.injured}
-                                    onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
-                                    className={clsx("w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.red_card ? "bg-red-500 text-white" : "bg-pitch-700 text-white/30")}>
-                                    🟥
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Clean Sheet */}
-                              <div className="flex flex-col items-center gap-1 bg-pitch-900/60 p-1.5 rounded-xl border border-pitch-700/60">
-                                <span className="text-[9px] text-white/40 uppercase font-bold">Valla</span>
-                                <button type="button" disabled={ev.injured}
-                                  onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
-                                  className={clsx("w-full h-6 rounded-md text-xs font-bold flex items-center justify-center transition-all", ev.clean_sheet ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/40" : "bg-pitch-700 text-white/30")}>
-                                  🧤
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-
-                {/* DESKTOP VIEW (>= sm): Full Data Table */}
-                <div className="hidden sm:block border border-pitch-700 rounded-2xl overflow-hidden max-h-[340px] overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-pitch-900 sticky top-0 border-b border-pitch-700 z-10">
-                      <tr>
-                        <th className="p-2.5 text-left text-white/50">Player & Role</th>
-                        <th className="p-2.5 text-center text-white/50">Played / Sub</th>
-                        <th className="p-2.5 text-center text-white/50">⚽ G</th>
-                        <th className="p-2.5 text-center text-white/50">🅰️ A</th>
-                        <th className="p-2.5 text-center text-white/50">🟨</th>
-                        <th className="p-2.5 text-center text-white/50">🟥</th>
-                        <th className="p-2.5 text-center text-white/50">🧤 Clean Sheet</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-pitch-700/50">
-                      {sortedPlayers.map(p => {
-                        const ev = playerEvents[p.id] || {
-                          player_id: p.id,
-                          played: false,
-                          is_starter: false,
-                          substituted_off: false,
-                          substituted_in: false,
-                          replaced_player_id: null,
-                          goals: 0,
-                          assists: 0,
-                          yellow_card: false,
-                          red_card: false,
-                          clean_sheet: false,
-                          injured: false,
-                        };
-
-                        const group = getPositionGroup(p.preferred_position);
-                        const colors = POSITION_COLORS[group];
-
-                        const availableBench = sortedPlayers.filter(
-                          b => !playerEvents[b.id]?.is_starter && !b.stats?.is_injured
-                        );
-
-                        return (
-                          <tr
-                            key={p.id}
-                            className={clsx(
-                              'transition-colors',
-                              ev.injured
-                                ? 'opacity-40 bg-red-950/10'
-                                : ev.is_starter
-                                ? 'bg-emerald-950/10 hover:bg-emerald-950/20'
-                                : ev.played
-                                ? 'bg-cyan-950/20 hover:bg-cyan-950/30'
-                                : 'hover:bg-pitch-800/40'
-                            )}
-                          >
-                            <td className="p-2.5 font-medium text-white">
-                              <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-1.5">
-                                  <span translate="no" className={clsx('badge text-[9px] font-bold px-1.5 py-0.2 rounded uppercase', colors.badge)}>
-                                    {p.preferred_position}
-                                  </span>
-                                  <span className="font-bold truncate max-w-[110px] sm:max-w-[150px]">{p.full_name}</span>
-                                  {ev.is_starter && (
-                                    <span className="text-[9px] text-emerald-400 font-extrabold bg-emerald-400/10 border border-emerald-400/20 px-1 py-0.2 rounded">
-                                      STARTER
-                                    </span>
-                                  )}
-                                  {ev.injured && (
-                                    <span className="text-[9px] text-red-400 font-bold bg-red-400/10 px-1 py-0.2 rounded">INJ</span>
-                                  )}
-                                </div>
-
-                                {ev.is_starter && (
-                                  <div className="flex items-center gap-1 mt-1 text-[10px]">
-                                    <ArrowLeftRight size={10} className="text-white/40 flex-shrink-0" />
-                                    <select
-                                      value={ev.replaced_player_id || ''}
-                                      onChange={(e) => handleStarterSubstitutedOff(p.id, e.target.value)}
-                                      className="bg-[#0b111e] border border-pitch-700 text-white/80 rounded px-1.5 py-0.5 text-[10px] outline-none"
-                                    >
-                                      <option value="">No subbed off</option>
-                                      {availableBench.map(b => (
-                                        <option key={b.id} value={b.id} className="bg-pitch-900 text-white">
-                                          Sub: {b.full_name} ({b.preferred_position})
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
-
-                                {ev.substituted_in && ev.replaced_player_id && (
-                                  <span className="text-[9px] text-cyan-300 font-bold mt-0.5">
-                                    ▶ Subbed in for {players.find(x => x.id === ev.replaced_player_id)?.full_name}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            <td className="p-2.5 text-center">
-                              {ev.is_starter ? (
-                                <span className={clsx("text-[10px] font-bold px-2 py-1 rounded-md", ev.substituted_off ? "bg-amber-500/20 text-amber-300" : "bg-emerald-500/20 text-emerald-400")}>
-                                  {ev.substituted_off ? "Subbed Off" : "Played XI"}
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={ev.injured}
-                                  onClick={() => updatePlayerEvent(p.id, 'played', !ev.played)}
-                                  className={clsx(
-                                    "px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all border flex items-center gap-1 mx-auto",
-                                    ev.played
-                                      ? "bg-cyan-400/20 border-cyan-400/40 text-cyan-300 shadow-sm"
-                                      : "bg-pitch-700/60 border-transparent text-white/40 hover:text-white"
-                                  )}
-                                >
-                                  {ev.played ? <UserCheck size={10} /> : <UserPlus size={10} />}
-                                  {ev.played ? "Entered Match" : "Did Not Play"}
-                                </button>
-                              )}
-                            </td>
-
-                            <td className="p-1.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button type="button" disabled={ev.injured || ev.goals <= 0}
-                                  onClick={() => updatePlayerEvent(p.id, 'goals', Math.max(0, ev.goals - 1))}
-                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                                  <Minus size={10} />
-                                </button>
-                                <span className={clsx('w-5 text-center font-bold', ev.goals > 0 ? 'text-neon-400' : 'text-white/30')}>
-                                  {ev.goals}
-                                </span>
-                                <button type="button" disabled={ev.injured}
-                                  onClick={() => updatePlayerEvent(p.id, 'goals', ev.goals + 1)}
-                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-neon-400/20 text-white/60 hover:text-neon-400 flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                                  <Plus size={10} />
-                                </button>
-                              </div>
-                            </td>
-
-                            <td className="p-1.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button type="button" disabled={ev.injured || ev.assists <= 0}
-                                  onClick={() => updatePlayerEvent(p.id, 'assists', Math.max(0, ev.assists - 1))}
-                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-pitch-600 text-white/60 hover:text-white flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                                  <Minus size={10} />
-                                </button>
-                                <span className={clsx('w-5 text-center font-bold', ev.assists > 0 ? 'text-electric-400' : 'text-white/30')}>
-                                  {ev.assists}
-                                </span>
-                                <button type="button" disabled={ev.injured}
-                                  onClick={() => updatePlayerEvent(p.id, 'assists', ev.assists + 1)}
-                                  className="w-6 h-6 rounded-md bg-pitch-700 hover:bg-electric-400/20 text-white/60 hover:text-electric-400 flex items-center justify-center disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
-                                  <Plus size={10} />
-                                </button>
-                              </div>
-                            </td>
-
-                            <td className="p-1.5 text-center">
-                              <button type="button" disabled={ev.injured}
-                                onClick={() => updatePlayerEvent(p.id, 'yellow_card', !ev.yellow_card)}
-                                className={clsx(
-                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
-                                  ev.yellow_card ? 'bg-amber-400 text-pitch-900' : 'bg-pitch-700 text-white/30 hover:bg-amber-400/20 hover:text-amber-400'
-                                )}>
-                                🟨
-                              </button>
-                            </td>
-
-                            <td className="p-1.5 text-center">
-                              <button type="button" disabled={ev.injured}
-                                onClick={() => updatePlayerEvent(p.id, 'red_card', !ev.red_card)}
-                                className={clsx(
-                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
-                                  ev.red_card ? 'bg-red-500 text-white' : 'bg-pitch-700 text-white/30 hover:bg-red-500/20 hover:text-red-400'
-                                )}>
-                                🟥
-                              </button>
-                            </td>
-
-                            <td className="p-1.5 text-center">
-                              <button type="button" disabled={ev.injured}
-                                onClick={() => updatePlayerEvent(p.id, 'clean_sheet', !ev.clean_sheet)}
-                                className={clsx(
-                                  'w-7 h-7 rounded-md flex items-center justify-center mx-auto text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed',
-                                  ev.clean_sheet ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/40 shadow-sm' : 'bg-pitch-700 text-white/30 hover:bg-emerald-400/10 hover:text-emerald-400'
-                                )}>
-                                🧤
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex gap-3 pt-3 border-t border-pitch-700 flex-shrink-0">
-                <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center py-3 shadow-lg">
-                  {submitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  {editingMatch ? 'Save Changes' : 'Save Match & Update Stats'}
-                </button>
-                <button type="button" onClick={() => setLogging(false)} className="btn-secondary">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Three-Column Grid: H2H Records + Match History Feed + Top 5 MVPs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
-
-        {/* Head-to-Head (H2H) Records Table */}
-        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
-          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
-            <Swords size={16} className="text-neon-400" />
-            Head-to-Head (H2H) vs Opponents
-          </h3>
-          {h2hRecords.length === 0 ? (
-            <p className="text-white/30 text-sm py-4 text-center my-auto">No match history logged yet</p>
-          ) : (
-            <div className="overflow-y-auto overflow-x-auto w-full flex-1 pr-1">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-[#0f172a] z-10">
-                  <tr className="border-b border-pitch-700">
-                    <th className="pb-2 text-left text-white/40">Opponent</th>
-                    <th className="pb-2 text-center text-white/40">P</th>
-                    <th className="pb-2 text-center text-neon-400">W</th>
-                    <th className="pb-2 text-center text-amber-400">D</th>
-                    <th className="pb-2 text-center text-red-400">L</th>
-                    <th className="pb-2 text-right text-white/40">Score Diff</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-pitch-700/40">
-                  {h2hRecords.map(r => (
-                    <tr key={r.opponent} className="hover:bg-pitch-700/20">
-                      <td className="py-2.5 font-bold text-white whitespace-nowrap">{r.opponent}</td>
-                      <td className="py-2.5 text-center text-white/70">{r.matchesPlayed}</td>
-                      <td className="py-2.5 text-center font-bold text-neon-400">{r.wins}</td>
-                      <td className="py-2.5 text-center text-amber-400">{r.draws}</td>
-                      <td className="py-2.5 text-center text-red-400">{r.losses}</td>
-                      <td className="py-2.5 text-right font-mono text-white/60 whitespace-nowrap">
-                        {r.goalsFor} : {r.goalsAgainst}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Matches Log Feed */}
-        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
-          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
-            <Calendar size={16} className="text-electric-400" />
-            Recent Match History
-          </h3>
-          {matches.length === 0 ? (
-            <p className="text-white/30 text-sm py-4 text-center my-auto">No matches recorded this season</p>
-          ) : (
-            <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-1">
-              {matches.map(m => (
-                <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-pitch-700 group hover:border-white/10 transition-all gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={clsx(
-                      'w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0',
-                      m.result === 'win' && 'bg-neon-400/20 text-neon-400 border border-neon-400/30',
-                      m.result === 'draw' && 'bg-amber-400/20 text-amber-400 border border-amber-400/30',
-                      m.result === 'loss' && 'bg-red-400/20 text-red-400 border border-red-400/30'
-                    )}>
-                      {m.result.toUpperCase().charAt(0)}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="font-bold text-white text-sm truncate">vs {m.opponent}</p>
-                        {m.competition && (
-                          <span className="text-[10px] text-white/50 bg-pitch-700 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
-                            {m.competition}
-                          </span>
-                        )}
-                      </div>
-                      {m.mvp_player && (
-                        <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5 truncate">
-                          <Star size={10} className="flex-shrink-0" /> MVP: {m.mvp_player.full_name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="font-mono text-sm sm:text-base font-black text-white">
-                      {m.team_score} - {m.opponent_score}
-                    </span>
-                    <button
-                      onClick={() => handleOpenEditModal(m)}
-                      className="btn-ghost p-1.5 text-xs text-white/60 hover:text-white"
-                      title="Edit Match"
-                    >
-                      <Edit2 size={14} />
+            ) : matches.length === 0 ? (
+              <EmptyState
+                icon={Swords}
+                title="Aún no hay partidos"
+                description="Registra cada partido al terminarlo: resultado, goleadores, tarjetas y MVP."
+                action={
+                  canLog && (
+                    <button type="button" onClick={openNewMatch} className="btn-primary">
+                      <Plus size={18} /> Registrar partido
                     </button>
-                    <button
-                      onClick={() => handleDeleteMatch(m.id)}
-                      className="btn-danger p-1.5 text-xs"
-                      title="Delete Match"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Top 5 MVPs of the Season */}
-        <div className="card p-4 sm:p-5 min-w-0 flex flex-col h-[380px]">
-          <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4 flex items-center gap-2 flex-shrink-0">
-            <Award size={16} className="text-amber-400" />
-            Top 5 MVPs of the Season
-          </h3>
-          {topMVPs.length === 0 ? (
-            <p className="text-white/30 text-sm py-4 text-center my-auto">No MVPs selected in matches yet</p>
-          ) : (
-            <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 pr-1">
-              {topMVPs.map(({ player, count }, idx) => {
-                const group = getPositionGroup(player.preferred_position);
-                const colors = POSITION_COLORS[group];
-                const countryCode = getCountryCode(player.nationality);
-                return (
-                  <div
-                    key={player.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-pitch-900/60 border border-amber-400/20 shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={clsx(
-                        'w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs flex-shrink-0',
-                        idx === 0 ? 'bg-amber-400 text-slate-950 shadow-md' : 'bg-pitch-700 text-white/70'
-                      )}>
-                        #{idx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-bold text-white text-sm truncate">{player.full_name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span translate="no" className={clsx('badge text-[9px] font-bold px-1.5 py-0.2 rounded uppercase', colors.badge)}>
-                            {player.preferred_position}
-                          </span>
-                          {countryCode && (
-                            <img
-                              src={`https://flagcdn.com/w40/${countryCode}.png`}
-                              alt={player.nationality ?? ''}
-                              className="w-3.5 h-2.5 object-cover rounded-[2px] shadow-sm flex-shrink-0"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={clsx("w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs shadow-sm flex-shrink-0", getOvrBadgeStyle(player.stats?.ovr_end ?? player.stats?.ovr_start).badgeClass)}>
-                        {player.stats?.ovr_end ?? player.stats?.ovr_start ?? 75}
-                      </span>
-                      <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-xl flex-shrink-0">
-                        <Star size={12} className="text-amber-400 fill-amber-400" />
-                        <span className="font-mono font-black text-amber-300 text-xs">
-                          {count} {count === 1 ? 'MVP' : 'MVPs'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* Goals + Assists Chart */}
-      {chartData.length > 0 && (
-        <div className="card p-4 sm:p-5 min-w-0">
-          <h3 className="font-semibold text-white mb-4 text-sm sm:text-base">Goals & Assists Leaders</h3>
-          <div className="w-full h-[240px] min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#ffffff60', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ background: '#111118', border: '1px solid #1e1e2e', borderRadius: 12 }}
-                  labelStyle={{ color: '#ffffff' }}
-                />
-                <Bar dataKey="goals" fill="#00ff87" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="assists" fill="#00c8ff" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex gap-4 justify-center mt-3">
-            <div className="flex items-center gap-2 text-xs text-white/50">
-              <div className="w-3 h-3 rounded-sm bg-neon-400" /> Goals
-            </div>
-            <div className="flex items-center gap-2 text-xs text-white/50">
-              <div className="w-3 h-3 rounded-sm bg-electric-400" /> Assists
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Full Season Stats Table */}
-      <div className="card overflow-hidden min-w-0">
-        <div className="p-4 border-b border-pitch-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <h3 className="font-semibold text-white text-sm sm:text-base">Full Season Player Leaderboard</h3>
-          <span className="text-[11px] text-white/40">Toggle 🚑 INJ to mark player as injured</span>
-        </div>
-        {playersLoading ? (
-          <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-neon-400" size={24} /></div>
-        ) : (
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-xs sm:text-sm text-left">
-              <thead>
-                <tr className="border-b border-pitch-700">
-                  {['Player', 'Pos', 'MP', 'G', 'A', 'YC', 'RC', 'CS', '🚑'].map(h => (
-                    <th key={h} className={clsx(
-                      'px-2.5 sm:px-4 py-3 text-xs uppercase tracking-wider font-medium whitespace-nowrap',
-                      h === '🚑' ? 'text-red-400 text-center' : 'text-white/40'
-                    )}>
-                      {h}
-                    </th>
+                  )
+                }
+              />
+            ) : (
+              <>
+                {!readOnly && <p className="px-2 pb-1 pt-1 text-xs text-white/45">Toca un partido para editarlo.</p>}
+                <ul className="divide-y divide-pitch-700/60">
+                  {matches.map((match) => (
+                    <li key={match.id}>
+                      <MatchListItem
+                        match={match}
+                        onClick={
+                          readOnly
+                            ? undefined
+                            : () => {
+                                setEditingMatch(match);
+                                setLoggerOpen(true);
+                              }
+                        }
+                      />
+                    </li>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-pitch-700/50">
-                {sortedPlayers.map((player, i) => {
-                  const colors = POSITION_COLORS[getPositionGroup(player.preferred_position)];
-                  const isInjured = player.stats?.is_injured ?? false;
-                  return (
-                    <tr key={player.id} className={clsx(
-                      'transition-colors',
-                      isInjured
-                        ? 'bg-red-950/10 opacity-60'
-                        : i % 2 === 0 ? 'bg-pitch-800/30 hover:bg-pitch-700/30' : 'hover:bg-pitch-700/30'
-                    )}>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 font-medium text-white whitespace-nowrap">
-                        {player.full_name}
-                      </td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 whitespace-nowrap">
-                        <span className={clsx('badge text-[10px]', colors.badge)}>{player.preferred_position}</span>
-                      </td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-white/70 whitespace-nowrap">{player.stats?.matches_played ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-neon-400 font-bold whitespace-nowrap">{player.stats?.goals ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-electric-400 font-bold whitespace-nowrap">{player.stats?.assists ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-amber-400 whitespace-nowrap">{player.stats?.yellow_cards ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-red-400 whitespace-nowrap">{player.stats?.red_cards ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-white/50 whitespace-nowrap">{player.stats?.clean_sheets ?? 0}</td>
-                      <td className="px-2.5 sm:px-4 py-2.5 sm:py-3 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => toggleInjured(player.id, !isInjured)}
-                          disabled={!player.stats}
-                          title={isInjured ? 'Mark as available' : 'Mark as injured'}
-                          className={clsx(
-                            'w-7 h-7 rounded-lg flex items-center justify-center transition-all text-sm mx-auto disabled:opacity-30 disabled:cursor-not-allowed',
-                            isInjured
-                              ? 'bg-red-500/30 border border-red-500/50 text-red-400'
-                              : 'bg-pitch-700 border border-pitch-600 text-white/20 hover:border-red-500/40 hover:text-red-400 hover:bg-red-500/10'
-                          )}
-                        >
-                          🚑
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {players.length === 0 && (
-              <p className="text-center text-white/30 py-8">No players in this season yet</p>
+                </ul>
+              </>
             )}
+          </section>
+        </div>
+      )}
+
+      {tab === 'players' && (
+        <div className="grid items-start gap-5 xl:grid-cols-3">
+          <section className="card overflow-hidden xl:col-span-2" aria-labelledby="leaderboard-title">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pb-2 pt-4">
+              <h2 id="leaderboard-title" className="section-title">
+                Estadísticas de la plantilla
+              </h2>
+              <span className="text-xs text-white/45">Toca una columna para ordenar</span>
+            </div>
+            {playersLoading ? (
+              <div className="flex flex-col gap-2 p-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton h-10 rounded-lg" />
+                ))}
+              </div>
+            ) : players.length === 0 ? (
+              <p className="px-4 pb-6 pt-2 text-sm text-white/40">No hay jugadores en esta temporada.</p>
+            ) : (
+              <Leaderboard players={players} onToggleInjured={toggleInjured} />
+            )}
+          </section>
+
+          <div className="flex flex-col gap-5">
+            <section className="card p-4" aria-labelledby="mvp-title">
+              <h2 id="mvp-title" className="section-title mb-3">
+                MVP de la temporada
+              </h2>
+              <MvpRanking ranking={mvpRanking} />
+            </section>
+
+            <section className="card p-4" aria-labelledby="chart-title">
+              <h2 id="chart-title" className="section-title mb-3">
+                Goles y asistencias
+              </h2>
+              <GoalsChart players={players} />
+            </section>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {tab === 'rivals' && (
+        <section className="card p-4" aria-labelledby="rivals-title">
+          <h2 id="rivals-title" className="section-title mb-2">
+            Cara a cara
+          </h2>
+          {h2hRecords.length === 0 ? (
+            <p className="py-6 text-center text-sm text-white/40">Aún no te has enfrentado a ningún rival.</p>
+          ) : (
+            <H2HTable records={h2hRecords} />
+          )}
+        </section>
+      )}
+
+      <MatchLoggerSheet
+        open={loggerOpen}
+        match={editingMatch}
+        players={players}
+        seasonId={activeSeason.id}
+        teamName={activeCareer?.club_name ?? 'Tu equipo'}
+        knownOpponents={knownOpponents}
+        saveError={error}
+        onClose={() => {
+          setLoggerOpen(false);
+          setEditingMatch(null);
+        }}
+        onSave={handleSave}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }

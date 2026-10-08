@@ -109,14 +109,14 @@ export const useScouting = (careerId: string | null): UseScoutingReturn => {
     const value = scoutEntry.estimated_value || 500000000;
     const wage = wageCents || 1000000;
 
-    await supabase.from('season_stats').insert({
+    const { error: statsErr } = await supabase.from('season_stats').insert({
       season_id: seasonId,
       player_id: newPlayer.id,
       ovr_start: ovr,
       ovr_end: ovr,
       market_value_start: value,
       market_value_end: value,
-      wage: wage,
+      salary: wage,
       matches_played: 0,
       goals: 0,
       assists: 0,
@@ -125,6 +125,11 @@ export const useScouting = (careerId: string | null): UseScoutingReturn => {
       clean_sheets: 0,
       is_injured: false,
     });
+
+    if (statsErr) {
+      setError(statsErr.message);
+      return false;
+    }
 
     // 3. Remove from scouting list
     await deleteEntry(scoutEntry.id);

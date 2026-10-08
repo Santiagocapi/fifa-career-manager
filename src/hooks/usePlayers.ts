@@ -31,10 +31,6 @@ interface UsePlayersReturn {
   updatePlayer: (id: string, data: Partial<Player>) => Promise<void>;
   updateStats: (playerId: string, seasonId: string, data: Partial<SeasonStats>) => Promise<void>;
   closeSeasonForPlayer: (playerId: string, seasonId: string, ovrEnd: number, valueEnd: number) => Promise<void>;
-  logMatchStats: (playerId: string, seasonId: string, matchData: {
-    goals?: number; assists?: number; yellowCards?: number;
-    redCards?: number; cleanSheets?: number; played?: boolean;
-  }) => Promise<void>;
   toggleInjured: (playerId: string, isInjured: boolean) => Promise<void>;
   deactivatePlayer: (id: string) => Promise<void>;
   refetch: () => void;
@@ -75,95 +71,20 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
       return;
     }
 
-    // If we have an active season, fetch stats AND recalculate from match_events for 100% accuracy
+    // season_stats counters are kept in sync by the match functions (see migration 004),
+    // so they are read as-is: reading must never write.
     let statsMap: Record<string, SeasonStats> = {};
     if (seasonId) {
-      const playerIds = playersData.map(p => p.id);
+      const { data: statsData, error: statsErr } = await supabase
+        .from('season_stats')
+        .select('*')
+        .eq('season_id', seasonId)
+        .in('player_id', playersData.map(p => p.id));
 
-      // Fetch season_stats and matches for this season concurrently
-      const [{ data: statsData }, { data: seasonMatches }] = await Promise.all([
-        supabase
-          .from('season_stats')
-          .select('*')
-          .eq('season_id', seasonId)
-          .in('player_id', playerIds),
-        supabase
-          .from('matches')
-          .select('id')
-          .eq('season_id', seasonId),
-      ]);
-
-      if (statsData) {
+      if (statsErr) {
+        setError(statsErr.message);
+      } else if (statsData) {
         statsMap = Object.fromEntries(statsData.map(s => [s.player_id, s]));
-      }
-
-      // Re-sync with actual match_events truth if matches exist
-      if (seasonMatches && seasonMatches.length > 0) {
-        const matchIds = seasonMatches.map(m => m.id);
-        const { data: allEvents } = await supabase
-          .from('match_events')
-          .select('*')
-          .in('match_id', matchIds);
-
-        if (allEvents) {
-          // Aggregate real totals from match_events per player
-          const agg: Record<string, { goals: number; assists: number; yellow_cards: number; red_cards: number; clean_sheets: number; matches_played: number }> = {};
-          for (const ev of allEvents) {
-            if (!agg[ev.player_id]) {
-              agg[ev.player_id] = { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0, clean_sheets: 0, matches_played: 0 };
-            }
-            const item = agg[ev.player_id];
-            item.goals += ev.goals || 0;
-            item.assists += ev.assists || 0;
-            item.yellow_cards += ev.yellow_card ? 1 : 0;
-            item.red_cards += ev.red_card ? 1 : 0;
-            item.clean_sheets += ev.clean_sheet ? 1 : 0;
-            item.matches_played += ev.injured ? 0 : 1;
-          }
-
-          // Check for discrepancies and update in memory + Supabase
-          const syncUpdates: PromiseLike<unknown>[] = [];
-          for (const pId of playerIds) {
-            const current = statsMap[pId];
-            const real = agg[pId] || { goals: 0, assists: 0, yellow_cards: 0, red_cards: 0, clean_sheets: 0, matches_played: 0 };
-            if (current) {
-              if (
-                current.goals !== real.goals ||
-                current.assists !== real.assists ||
-                current.matches_played !== real.matches_played ||
-                current.yellow_cards !== real.yellow_cards ||
-                current.red_cards !== real.red_cards ||
-                current.clean_sheets !== real.clean_sheets
-              ) {
-                // Update in memory
-                statsMap[pId] = {
-                  ...current,
-                  goals: real.goals,
-                  assists: real.assists,
-                  matches_played: real.matches_played,
-                  yellow_cards: real.yellow_cards,
-                  red_cards: real.red_cards,
-                  clean_sheets: real.clean_sheets,
-                };
-                // Sync back to Supabase asynchronously
-                syncUpdates.push(
-                  supabase.from('season_stats').update({
-                    goals: real.goals,
-                    assists: real.assists,
-                    matches_played: real.matches_played,
-                    yellow_cards: real.yellow_cards,
-                    red_cards: real.red_cards,
-                    clean_sheets: real.clean_sheets,
-                    updated_at: new Date().toISOString(),
-                  }).eq('id', current.id)
-                );
-              }
-            }
-          }
-          if (syncUpdates.length > 0) {
-            Promise.all(syncUpdates).catch(console.error);
-          }
-        }
       }
     }
 
@@ -265,28 +186,6 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     });
   };
 
-  // Add match stats incrementally (post-match logger)
-  const logMatchStats = async (
-    playerId: string,
-    seasonId: string,
-    match: { goals?: number; assists?: number; yellowCards?: number; redCards?: number; cleanSheets?: number; played?: boolean }
-  ) => {
-    // Get current stats first
-    const currentPlayer = players.find(p => p.id === playerId);
-    if (!currentPlayer?.stats) return;
-
-    const updated: Partial<SeasonStats> = {
-      goals:         currentPlayer.stats.goals         + (match.goals ?? 0),
-      assists:       currentPlayer.stats.assists       + (match.assists ?? 0),
-      yellow_cards:  currentPlayer.stats.yellow_cards  + (match.yellowCards ?? 0),
-      red_cards:     currentPlayer.stats.red_cards     + (match.redCards ?? 0),
-      clean_sheets:  currentPlayer.stats.clean_sheets  + (match.cleanSheets ?? 0),
-      matches_played: currentPlayer.stats.matches_played + (match.played ? 1 : 0),
-    };
-
-    await updateStats(playerId, seasonId, updated);
-  };
-
   const deactivatePlayer = async (id: string) => {
     await updatePlayer(id, { is_active: false });
     setPlayers(prev => prev.filter(p => p.id !== id));
@@ -317,7 +216,6 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     updatePlayer,
     updateStats,
     closeSeasonForPlayer,
-    logMatchStats,
     toggleInjured,
     deactivatePlayer,
     refetch: fetchPlayers,

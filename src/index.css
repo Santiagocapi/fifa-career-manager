@@ -56,8 +56,13 @@
      and at least 44px tall so they are easy to hit with a thumb. */
   :where(input:not([type='checkbox'], [type='radio']), textarea, select) {
     @apply w-full rounded-xl border border-pitch-600 bg-pitch-900 px-3.5 py-2 text-base text-white
-           transition-colors duration-150 placeholder:text-white/30 sm:text-sm;
+           transition-colors duration-150 sm:text-sm;
     min-height: 2.75rem;
+  }
+  /* Same specificity as preflight's rule, declared later so it wins */
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-white/30;
   }
   :where(input:not([type='checkbox'], [type='radio']), textarea, select):focus {
     @apply border-neon-400/70 outline-none ring-2 ring-neon-400/20;

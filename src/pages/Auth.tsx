@@ -17,17 +17,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Shield, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { clsx } from 'clsx';
+import AppLogo from '../components/ui/AppLogo';
+import Field from '../components/ui/Field';
+import InlineAlert from '../components/ui/InlineAlert';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
 
 interface AuthFormData {
   email: string;
   password: string;
 }
 
+type AuthMode = 'login' | 'register';
+
+// Supabase answers in English; translate the messages users actually see
+const AUTH_ERRORS: Record<string, string> = {
+  'Invalid login credentials': 'Email o contraseña incorrectos.',
+  'Email not confirmed': 'Confirma tu email antes de iniciar sesión.',
+  'User already registered': 'Ya existe una cuenta con ese email.',
+};
+
+const translateAuthError = (message: string) => AUTH_ERRORS[message] ?? message;
+
 export default function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -36,6 +50,12 @@ export default function AuthPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<AuthFormData>();
 
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+  };
+
   const onSubmit = async (data: AuthFormData) => {
     setSubmitError(null);
     setSubmitSuccess(null);
@@ -43,137 +63,104 @@ export default function AuthPage() {
     if (mode === 'login') {
       const { error } = await signIn(data.email, data.password);
       if (error) {
-        setSubmitError(error);
+        setSubmitError(translateAuthError(error));
       } else {
         navigate('/careers');
       }
     } else {
       const { error } = await signUp(data.email, data.password);
       if (error) {
-        setSubmitError(error);
+        setSubmitError(translateAuthError(error));
       } else {
-        setSubmitSuccess('Account created! Check your email to confirm, then log in.');
+        setSubmitSuccess('Cuenta creada. Revisa tu email para confirmarla y después inicia sesión.');
         setMode('login');
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-pitch-900 flex items-center justify-center p-4">
-      {/* Decorative background glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                        w-[600px] h-[600px] rounded-full
-                        bg-neon-400/5 blur-[120px]" />
-      </div>
-
-      <div className="relative w-full max-w-md animate-fade-in">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center
-                          w-16 h-16 rounded-2xl bg-neon-400/10 border border-neon-400/20
-                          mb-4 shadow-neon">
-            <Shield size={32} className="text-neon-400" />
-          </div>
-          <h1 className="text-3xl font-black text-white mb-1">
-            Career Manager
-          </h1>
-          <p className="text-white/50 text-sm">
-            Your FIFA coaching career hub
-          </p>
+    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
+      <div className="w-full max-w-sm animate-fade-in">
+        {/* Brand */}
+        <div className="mb-8 flex flex-col items-center text-center">
+          <AppLogo size={64} className="mb-4 drop-shadow-[0_0_24px_theme(colors.neon.400/30%)]" />
+          <h1 className="text-3xl font-black tracking-tight text-white">Career Manager</h1>
+          <p className="mt-1 text-sm text-white/55">Tu modo carrera de EA FC, partido a partido</p>
         </div>
 
-        {/* Card */}
-        <div className="glass-card p-8">
-          {/* Mode toggle */}
-          <div className="flex gap-1 p-1 bg-pitch-900 rounded-xl mb-6">
-            {(['login', 'register'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setSubmitError(null); setSubmitSuccess(null); }}
-                className={clsx(
-                  'flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                  mode === m
-                    ? 'bg-neon-400 text-pitch-950 shadow-neon-sm'
-                    : 'text-white/50 hover:text-white'
-                )}
-              >
-                {m === 'login' ? 'Sign In' : 'Register'}
-              </button>
-            ))}
-          </div>
+        <div className="card p-5 sm:p-6">
+          <SegmentedTabs
+            ariaLabel="Acceso"
+            fullWidth
+            value={mode}
+            onChange={switchMode}
+            items={[
+              { value: 'login', label: 'Iniciar sesión' },
+              { value: 'register', label: 'Crear cuenta' },
+            ]}
+          />
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            {/* Email field */}
-            <div className="form-group">
-              <label className="form-label">Email</label>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-5 flex flex-col gap-4">
+            <Field label="Email" htmlFor="auth-email" error={errors.email?.message}>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <Mail size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35" />
                 <input
+                  id="auth-email"
                   type="email"
-                  placeholder="manager@club.com"
-                  className="pl-10 w-full"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="entrenador@club.com"
+                  className="pl-11"
+                  aria-invalid={errors.email ? true : undefined}
                   {...register('email', {
-                    required: 'Email is required',
+                    required: 'Escribe tu email',
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'Invalid email address'
-                    }
+                      message: 'El email no es válido',
+                    },
                   })}
                 />
               </div>
-              {errors.email && <p className="form-error">{errors.email.message}</p>}
-            </div>
+            </Field>
 
-            {/* Password field */}
-            <div className="form-group">
-              <label className="form-label">Password</label>
+            <Field label="Contraseña" htmlFor="auth-password" error={errors.password?.message}>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <Lock size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35" />
                 <input
+                  id="auth-password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   placeholder="••••••••"
-                  className="pl-10 pr-10 w-full"
+                  className="pl-11 pr-12"
+                  aria-invalid={errors.password ? true : undefined}
                   {...register('password', {
-                    required: 'Password is required',
-                    minLength: mode === 'register'
-                      ? { value: 6, message: 'Password must be at least 6 characters' }
-                      : undefined
+                    required: 'Escribe tu contraseña',
+                    minLength:
+                      mode === 'register'
+                        ? { value: 6, message: 'Usa al menos 6 caracteres' }
+                        : undefined,
                   })}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
+                  className="icon-btn absolute right-1 top-1/2 -translate-y-1/2"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && <p className="form-error">{errors.password.message}</p>}
-            </div>
+            </Field>
 
-            {/* Error / Success messages */}
-            {submitError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm">
-                {submitError}
-              </div>
-            )}
-            {submitSuccess && (
-              <div className="bg-neon-400/10 border border-neon-400/20 rounded-xl p-3 text-neon-400 text-sm">
-                {submitSuccess}
-              </div>
-            )}
+            {submitError && <InlineAlert>{submitError}</InlineAlert>}
+            {submitSuccess && <InlineAlert tone="success">{submitSuccess}</InlineAlert>}
 
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary w-full justify-center mt-2 py-3"
-            >
-              {isSubmitting ? (
-                <><Loader2 size={16} className="animate-spin" /> Loading...</>
-              ) : mode === 'login' ? 'Sign In' : 'Create Account'}
+            <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg mt-1 w-full">
+              {isSubmitting && <Loader2 size={18} className="animate-spin" />}
+              {mode === 'login' ? 'Entrar' : 'Crear cuenta'}
             </button>
           </form>
         </div>

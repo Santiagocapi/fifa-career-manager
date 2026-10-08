@@ -242,7 +242,7 @@ export default function Stats() {
     if (!opponent.trim()) return;
 
     setSubmitting(true);
-    // Send all player events so every non-injured player gets +1 match played
+    // Send every player's event; `played` decides who gets a match played
     const allEvents = Object.values(playerEvents);
 
     const payload = {

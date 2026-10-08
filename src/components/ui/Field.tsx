@@ -47,11 +47,14 @@ export default function Field({ label, children, hint, error, required = false, 
     );
   }
 
+  // The hint/error stays outside the <label> so it is not read as part of the name
   return (
-    <label className={clsx('field', className)}>
-      <span className="field-label">{labelContent}</span>
-      {children}
+    <div className={clsx('field', className)}>
+      <label className="flex min-w-0 flex-col gap-1.5">
+        <span className="field-label">{labelContent}</span>
+        {children}
+      </label>
       {message}
-    </label>
+    </div>
   );
 }

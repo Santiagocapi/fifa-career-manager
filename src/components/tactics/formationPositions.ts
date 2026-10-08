@@ -14,7 +14,7 @@ export interface PitchSlotDef {
 
 export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
   "4-3-3": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -27,7 +27,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW",  x: 80, y: 24 },
   ],
   "4-3-3 Attack": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -40,7 +40,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW",  x: 82, y: 22 },
   ],
   "4-3-3 Holding": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -53,7 +53,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW",  x: 82, y: 22 },
   ],
   "4-3-3 Defend": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -66,7 +66,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW",  x: 82, y: 22 },
   ],
   "4-3-3 False 9": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -79,7 +79,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW",  x: 82, y: 20 },
   ],
   "4-2-3-1": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -92,7 +92,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 18 },
   ],
   "4-2-3-1 Narrow": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -105,7 +105,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 18 },
   ],
   "4-1-2-1-2 Narrow": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -118,7 +118,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 62, y: 18 },
   ],
   "4-1-2-1-2 Wide": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -131,7 +131,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 62, y: 18 },
   ],
   "4-4-2": [
-    { role: "GK", x: 50, y: 88 },
+    { role: "GK", x: 50, y: 90 },
     { role: "LB", x: 15, y: 70 },
     { role: "CB", x: 38, y: 74 },
     { role: "CB", x: 62, y: 74 },
@@ -144,9 +144,9 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST", x: 62, y: 20 },
   ],
   "3-5-2": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "CB",  x: 25, y: 72 },
-    { role: "CB",  x: 50, y: 76 },
+    { role: "CB",  x: 50, y: 74 },
     { role: "CB",  x: 75, y: 72 },
     { role: "LM",  x: 12, y: 48 },
     { role: "CDM", x: 35, y: 54 },
@@ -157,10 +157,10 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 62, y: 20 },
   ],
   "5-3-2": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LWB", x: 12, y: 66 },
     { role: "CB",  x: 31, y: 74 },
-    { role: "CB",  x: 50, y: 76 },
+    { role: "CB",  x: 50, y: 74 },
     { role: "CB",  x: 69, y: 74 },
     { role: "RWB", x: 88, y: 66 },
     { role: "CM",  x: 30, y: 46 },
@@ -170,7 +170,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 62, y: 20 },
   ],
   "4-1-4-1": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -183,7 +183,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 18 },
   ],
   "4-5-1": [
-    { role: "GK", x: 50, y: 88 },
+    { role: "GK", x: 50, y: 90 },
     { role: "LB", x: 15, y: 70 },
     { role: "CB", x: 38, y: 74 },
     { role: "CB", x: 62, y: 74 },
@@ -196,9 +196,9 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST", x: 50, y: 18 },
   ],
   "3-4-3": [
-    { role: "GK", x: 50, y: 88 },
+    { role: "GK", x: 50, y: 90 },
     { role: "CB", x: 25, y: 72 },
-    { role: "CB", x: 50, y: 76 },
+    { role: "CB", x: 50, y: 74 },
     { role: "CB", x: 75, y: 72 },
     { role: "LM", x: 15, y: 48 },
     { role: "CM", x: 38, y: 50 },
@@ -209,10 +209,10 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "RW", x: 80, y: 22 },
   ],
   "5-4-1": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LWB", x: 12, y: 68 },
     { role: "CB",  x: 31, y: 74 },
-    { role: "CB",  x: 50, y: 76 },
+    { role: "CB",  x: 50, y: 74 },
     { role: "CB",  x: 69, y: 74 },
     { role: "RWB", x: 88, y: 68 },
     { role: "LM",  x: 15, y: 46 },
@@ -222,7 +222,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 20 },
   ],
   "4-3-2-1": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -235,7 +235,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 18 },
   ],
   "4-4-1-1": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -248,7 +248,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 50, y: 18 },
   ],
   "4-2-2-2": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },
@@ -261,7 +261,7 @@ export const FORMATION_SLOTS: Record<FormationScheme, PitchSlotDef[]> = {
     { role: "ST",  x: 62, y: 18 },
   ],
   "4-3-1-2": [
-    { role: "GK",  x: 50, y: 88 },
+    { role: "GK",  x: 50, y: 90 },
     { role: "LB",  x: 15, y: 70 },
     { role: "CB",  x: 38, y: 74 },
     { role: "CB",  x: 62, y: 74 },

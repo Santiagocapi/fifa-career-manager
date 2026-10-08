@@ -43,7 +43,7 @@ export default function BenchList({
         <div>
           <h3 className="font-bold text-white text-base">Substitutes & Bench</h3>
           <p className="text-xs text-white/50">
-            {benchPlayers.length} reserve players available · Drag onto pitch
+            {benchPlayers.length} reserve players available Â· Drag onto pitch
           </p>
         </div>
         {selectedSlotIndex !== null && (

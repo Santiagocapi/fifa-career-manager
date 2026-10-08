@@ -55,3 +55,4 @@ Stack: React 18 + TypeScript (strict) + Vite + Tailwind + Zustand + Supabase (Po
 - Antes de cerrar una tarea: `npm run build` y `npm run lint` en verde, y probar el flujo afectado en el navegador.
 - Cambios pequeños y enfocados; no mezclar refactors con features.
 - No commitear `.env`, `node_modules/`, `dist/` ni `.vite/`.
+- Commits y PRs en inglés, sin líneas `Co-Authored-By` ni firmas de Claude: el autor es solo el dueño del repo.

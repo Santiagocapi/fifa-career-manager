@@ -323,7 +323,7 @@ export default function History() {
                               ) : growth < 0 ? (
                                 <span className="text-rose-400">{growth}</span>
                               ) : (
-                                <span className="text-white/30">—</span>
+                                <span className="text-white/30">â€”</span>
                               )}
                             </td>
                             <td className="py-2.5 text-center font-mono font-bold text-emerald-400">

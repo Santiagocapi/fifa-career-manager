@@ -89,7 +89,7 @@ export default function TrophyCabinet({
           <div className="flex items-center gap-2">
             <Award size={20} className="text-purple-400" />
             <h3 className="font-extrabold text-white text-base tracking-tight">
-              Individual Player Awards (Títulos Individuales)
+              Individual Player Awards (TÃ­tulos Individuales)
             </h3>
           </div>
           <span className="badge bg-purple-400/10 text-purple-300 border border-purple-400/20 font-bold font-mono">

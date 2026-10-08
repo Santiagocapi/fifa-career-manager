@@ -169,7 +169,13 @@ function SheetPanel({
 
         {toolbar && <div className="flex-shrink-0 px-5 pb-3">{toolbar}</div>}
 
-        <div className="flex-1 overflow-y-auto overscroll-contain border-t border-pitch-700 px-5 py-4">
+        <div
+          className={clsx(
+            'flex-1 overflow-y-auto overscroll-contain border-t border-pitch-700 px-5 pt-4',
+            // Without a footer the body is the last thing above the home indicator
+            footer ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]'
+          )}
+        >
           {children}
         </div>
 

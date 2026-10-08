@@ -1,153 +1,106 @@
 // ============================================================
 // src/components/tactics/BenchList.tsx
-// Panel listing substitutes & reserve squad players with quick
-// swap actions and Drag & Drop into the pitch.
+// Substitutes and reserves. Tap one after selecting a pitch
+// player to swap them; on desktop they can be dragged too.
 // ============================================================
 
-import { clsx } from "clsx";
-import type { PlayerWithStats } from "../../types/database";
-import {
-  POSITION_COLORS,
-  getPositionGroup,
-  getPlayerInitials,
-  getPlayerAvatarGradient,
-  getCountryCode,
-  getOvrBadgeStyle,
-} from "../../lib/constants";
-import { ArrowRightLeft, GripVertical } from "lucide-react";
+import { ArrowLeftRight, Cross, GripVertical } from 'lucide-react';
+import { clsx } from 'clsx';
+import type { PlayerWithStats } from '../../types/database';
+import { getPositionGroup } from '../../lib/constants';
+import PlayerAvatar from '../player/PlayerAvatar';
+import PositionBadge from '../player/PositionBadge';
+import OvrBadge from '../player/OvrBadge';
+import Flag from '../player/Flag';
+import { playerOvr } from './lineup';
+import type { PitchDragData } from './PitchBoard';
 
 interface BenchListProps {
   benchPlayers: PlayerWithStats[];
-  selectedSlotIndex: number | null;
-  selectedSlotRole: string | null;
-  onSwapWithBench: (benchPlayerId: string) => void;
+  /** Role of the selected pitch slot, if any (e.g. "ST") */
+  selectedRole: string | null;
+  onPick: (benchPlayerId: string) => void;
 }
 
-export default function BenchList({
-  benchPlayers,
-  selectedSlotIndex,
-  selectedSlotRole,
-  onSwapWithBench,
-}: BenchListProps) {
-  const handleDragStart = (e: React.DragEvent, playerId: string) => {
-    e.dataTransfer.setData(
-      "text/plain",
-      JSON.stringify({ type: "bench", playerId })
-    );
-    e.dataTransfer.effectAllowed = "move";
-  };
+export default function BenchList({ benchPlayers, selectedRole, onPick }: BenchListProps) {
+  const selecting = selectedRole !== null;
+  const selectedGroup = selectedRole ? getPositionGroup(selectedRole) : null;
 
   return (
-    <div className="card p-4 flex flex-col gap-3 h-full">
-      <div className="flex items-center justify-between border-b border-[#223254] pb-3">
+    <section className="card flex flex-col p-4" aria-labelledby="bench-title">
+      <div className="flex items-start justify-between gap-3 border-b border-pitch-700 pb-3">
         <div>
-          <h3 className="font-bold text-white text-base">Substitutes & Bench</h3>
-          <p className="text-xs text-white/50">
-            {benchPlayers.length} reserve players available · Drag onto pitch
+          <h2 id="bench-title" className="font-bold text-white">
+            Suplentes <span className="font-normal text-white/40">({benchPlayers.length})</span>
+          </h2>
+          <p className="mt-0.5 text-xs text-white/50">
+            {selecting
+              ? 'Elige quién entra en el campo.'
+              : 'Toca un jugador del campo y después uno de aquí. En ordenador también puedes arrastrarlos.'}
           </p>
         </div>
-        {selectedSlotIndex !== null && (
-          <span translate="no" className="badge bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] uppercase font-bold animate-pulse">
-            Selecting for {selectedSlotRole}
+        {selecting && (
+          <span translate="no" className="badge flex-shrink-0 border-amber-400/40 bg-amber-400/15 text-amber-300">
+            Cambio: {selectedRole}
           </span>
         )}
       </div>
 
       {benchPlayers.length === 0 ? (
-        <div className="p-8 text-center text-white/40 text-sm">
-          All squad players are currently in the starting XI.
-        </div>
+        <p className="py-8 text-center text-sm text-white/40">Toda la plantilla está en el once inicial.</p>
       ) : (
-        <div className="flex flex-col gap-2 overflow-y-auto max-h-[520px] pr-1">
+        <ul className="-mx-1 mt-2 flex flex-col gap-1 lg:max-h-[560px] lg:overflow-y-auto">
           {benchPlayers.map((player) => {
-            const group = getPositionGroup(player.preferred_position);
-            const colors = POSITION_COLORS[group];
-            const initials = getPlayerInitials(player.full_name);
-            const [gradStart, gradEnd] = getPlayerAvatarGradient(player.full_name);
-            const ovr = player.stats?.ovr_end ?? player.stats?.ovr_start ?? 75;
-            const countryCode = getCountryCode(player.nationality);
-            const isInjured = player.stats?.is_injured ?? false;
-            const ovrStyle = getOvrBadgeStyle(ovr);
-
+            const fits = selectedGroup !== null && getPositionGroup(player.preferred_position) === selectedGroup;
+            const injured = player.stats?.is_injured ?? false;
             return (
-              <div
-                key={player.id}
-                draggable={true}
-                onDragStart={(e) => handleDragStart(e, player.id)}
-                onClick={() => {
-                  if (selectedSlotIndex !== null) {
-                    onSwapWithBench(player.id);
-                  }
-                }}
-                className={clsx(
-                  "p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 group cursor-grab active:cursor-grabbing select-none",
-                  selectedSlotIndex !== null
-                    ? "border-amber-400/40 bg-amber-500/5 hover:border-amber-400 hover:bg-amber-500/10 shadow-md"
-                    : "border-[#223254] bg-[#0b111e]/80 hover:border-white/20 hover:bg-[#141e33]"
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <GripVertical size={16} className="text-white/20 group-hover:text-white/50 flex-shrink-0" />
-
-                  {/* Player Avatar */}
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0 border border-white/10"
-                    style={{ background: `linear-gradient(135deg, ${gradStart}, ${gradEnd})` }}
-                  >
-                    {initials}
-                  </div>
-
+              <li key={player.id}>
+                <div
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'bench', playerId: player.id } satisfies PitchDragData));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  className={clsx(
+                    'flex items-center gap-2.5 rounded-xl border px-2 py-2 transition-colors',
+                    selecting && fits
+                      ? 'border-amber-400/40 bg-amber-400/5'
+                      : 'border-transparent hover:bg-white/[0.03]',
+                    'cursor-grab active:cursor-grabbing'
+                  )}
+                >
+                  <GripVertical size={16} className="hidden flex-shrink-0 text-white/20 lg:block" />
+                  <PlayerAvatar name={player.full_name} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-bold text-white text-sm truncate group-hover:text-amber-300 transition-colors">
+                    <p className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-sm font-semibold text-white" translate="no">
                         {player.full_name}
-                      </p>
-                      {isInjured && (
-                        <span className="text-[9px] text-rose-400 font-bold bg-rose-500/20 px-1 py-0.2 rounded flex-shrink-0">
-                          INJ
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span translate="no" className={clsx("badge text-[9px] font-bold px-1.5 py-0.2 rounded uppercase", colors.badge)}>
-                        {player.preferred_position}
                       </span>
-                      {countryCode && (
-                        <img
-                          src={`https://flagcdn.com/w40/${countryCode}.png`}
-                          alt={player.nationality ?? ""}
-                          className="w-4 h-3 object-cover rounded-[2px] shadow-sm flex-shrink-0"
-                        />
-                      )}
-                      {player.age && (
-                        <span className="text-[11px] text-white/50">{player.age}y</span>
-                      )}
-                    </div>
+                      {injured && <Cross size={12} strokeWidth={3} className="flex-shrink-0 text-red-400" aria-label="Lesionado" />}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-white/50">
+                      <PositionBadge position={player.preferred_position} />
+                      <Flag nationality={player.nationality} />
+                      {player.age && <span>{player.age} años</span>}
+                    </p>
                   </div>
-                </div>
-
-                {/* OVR Rating & Swap Action */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center font-mono font-black text-sm shadow-md transition-transform hover:scale-105", ovrStyle.badgeClass)}>
-                    {ovr}
-                  </div>
-                  {selectedSlotIndex !== null && (
+                  <OvrBadge ovr={playerOvr(player)} size="sm" />
+                  {selecting && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSwapWithBench(player.id);
-                      }}
-                      className="btn-primary text-xs py-1.5 px-2.5 rounded-lg flex items-center gap-1 shadow-md"
+                      type="button"
+                      onClick={() => onPick(player.id)}
+                      className="btn-primary btn-sm"
+                      aria-label={`Meter a ${player.full_name}`}
                     >
-                      <ArrowRightLeft size={12} /> Swap
+                      <ArrowLeftRight size={14} /> Entra
                     </button>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   );
 }

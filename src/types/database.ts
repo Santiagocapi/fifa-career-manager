@@ -124,6 +124,7 @@ export interface MatchEvent {
   id: string;
   match_id: string;
   player_id: string;
+  played: boolean;
   goals: number;
   assists: number;
   yellow_card: boolean;

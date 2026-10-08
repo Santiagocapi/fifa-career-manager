@@ -165,7 +165,8 @@ export default function Stats() {
     players.forEach(p => {
       const existingEv = match.events.find(e => e.player_id === p.id);
       const isStarter = starterSet.has(p.id);
-      const didPlay = existingEv ? true : isStarter;
+      // Every squad player gets an event row (played true or false), so the stored flag wins
+      const didPlay = existingEv ? existingEv.played : isStarter;
 
       eventsMap[p.id] = {
         player_id: p.id,

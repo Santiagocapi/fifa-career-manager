@@ -1,194 +1,145 @@
 // ============================================================
 // src/components/history/TrophyCabinet.tsx
-// Visual Showcase for Club Trophies & Individual Player Awards
-// with authentic SVG trophy badges.
+// Club trophies and individual awards of a season, drawn with
+// the SVG trophy badges.
 // ============================================================
 
-import type { Trophy, PlayerWithStats } from "../../types/database";
-import { TrophyIcon } from "./TrophyIcons";
-import {
-  getPlayerInitials,
-  getPlayerAvatarGradient,
-  getCountryCode,
-} from "../../lib/constants";
-import { Trophy as TrophyLucide, Award, Trash2 } from "lucide-react";
+import { Award, Trash2, Trophy as TrophyIconLucide } from 'lucide-react';
+import type { ReactNode } from 'react';
+import type { PlayerWithStats, Trophy } from '../../types/database';
+import { getTrophyTypeLabel } from '../../lib/constants';
+import PlayerAvatar from '../player/PlayerAvatar';
+import { TrophyIcon } from './TrophyIcons';
 
 interface TrophyCabinetProps {
   trophies: Trophy[];
   players: PlayerWithStats[];
-  onDeleteTrophy?: (id: string) => void;
+  /** Omitted for read-only (closed) seasons */
+  onDeleteTrophy?: (trophy: Trophy) => void;
 }
 
-export default function TrophyCabinet({
-  trophies,
-  players,
-  onDeleteTrophy,
-}: TrophyCabinetProps) {
-  const clubTrophies = trophies.filter((t) => t.trophy_type !== "individual");
-  const individualTrophies = trophies.filter((t) => t.trophy_type === "individual");
+// Artwork for an individual award, guessed from its name
+const individualAwardKey = (name: string) => {
+  const n = name.toLowerCase();
+  if (/(boot|bota|botín|botin|pichichi)/.test(n)) return 'golden_boot';
+  if (/(glove|guante|zamora)/.test(n)) return 'golden_glove';
+  return 'ballon_dor';
+};
+
+export default function TrophyCabinet({ trophies, players, onDeleteTrophy }: TrophyCabinetProps) {
+  const clubTrophies = trophies.filter((t) => t.trophy_type !== 'individual');
+  const individualAwards = trophies.filter((t) => t.trophy_type === 'individual');
+
+  // The recipient is stored in `icon` (player id); older awards only have the name in the title
+  const recipientOf = (trophy: Trophy) =>
+    players.find((p) => p.id === trophy.icon) ??
+    players.find((p) => trophy.trophy_name.toLowerCase().includes(p.full_name.toLowerCase()));
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* 1. Club Trophies Shelf */}
-      <div className="card p-5 bg-gradient-to-r from-amber-500/5 via-[#0f172a] to-[#0f172a] border-amber-400/20 shadow-xl">
-        <div className="flex items-center justify-between mb-4 border-b border-[#223254] pb-3">
-          <div className="flex items-center gap-2">
-            <TrophyLucide size={20} className="text-amber-400" />
-            <h3 className="font-extrabold text-white text-base tracking-tight">
-              Club Trophies (Vitrina del Club)
-            </h3>
-          </div>
-          <span className="badge bg-amber-400/10 text-amber-300 border border-amber-400/20 font-bold font-mono">
-            {clubTrophies.length} {clubTrophies.length === 1 ? "Title" : "Titles"}
-          </span>
-        </div>
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Shelf
+        title="Trofeos del club"
+        icon={<TrophyIconLucide size={15} className="text-amber-400" />}
+        count={clubTrophies.length}
+        empty="Ningún título del club en esta temporada."
+      >
+        {clubTrophies.map((trophy) => (
+          <ShelfItem
+            key={trophy.id}
+            badge={<TrophyIcon type={trophy.trophy_type} size={36} />}
+            title={trophy.trophy_name}
+            subtitle={getTrophyTypeLabel(trophy.trophy_type)}
+            onDelete={onDeleteTrophy && (() => onDeleteTrophy(trophy))}
+          />
+        ))}
+      </Shelf>
 
-        {clubTrophies.length === 0 ? (
-          <p className="text-white/30 text-sm py-4 text-center">
-            No club trophies won yet for this season
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {clubTrophies.map((trophy) => (
-              <div
-                key={trophy.id}
-                className="group relative flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0b111e]/90 border border-amber-400/30 hover:border-amber-400 shadow-md transition-all hover:-translate-y-0.5"
-              >
-                {/* SVG Trophy Badge */}
-                <div className="w-14 h-14 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center flex-shrink-0 shadow-inner">
-                  <TrophyIcon type={trophy.trophy_type} size={38} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="font-extrabold text-white text-sm truncate group-hover:text-amber-300 transition-colors">
-                    {trophy.trophy_name}
-                  </p>
-                  <span className="text-[10px] text-amber-400/80 font-bold uppercase tracking-wider block mt-0.5">
-                    {trophy.trophy_type.replace("_", " ")}
+      <Shelf
+        title="Premios individuales"
+        icon={<Award size={15} className="text-purple-300" />}
+        count={individualAwards.length}
+        empty="Ningún premio individual en esta temporada."
+      >
+        {individualAwards.map((trophy) => {
+          const recipient = recipientOf(trophy);
+          return (
+            <ShelfItem
+              key={trophy.id}
+              badge={<TrophyIcon type={individualAwardKey(trophy.trophy_name)} size={36} />}
+              title={trophy.trophy_name}
+              subtitle={
+                recipient ? (
+                  <span className="flex min-w-0 items-center gap-1.5 text-white/75">
+                    <PlayerAvatar name={recipient.full_name} size="xs" />
+                    <span className="truncate" translate="no">
+                      {recipient.full_name}
+                    </span>
                   </span>
-                </div>
-
-                {onDeleteTrophy && (
-                  <button
-                    onClick={() => onDeleteTrophy(trophy.id)}
-                    className="btn-danger p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                    title="Delete Trophy"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 2. Individual Player Awards Shelf */}
-      <div className="card p-5 bg-gradient-to-r from-purple-500/5 via-[#0f172a] to-[#0f172a] border-purple-400/20 shadow-xl">
-        <div className="flex items-center justify-between mb-4 border-b border-[#223254] pb-3">
-          <div className="flex items-center gap-2">
-            <Award size={20} className="text-purple-400" />
-            <h3 className="font-extrabold text-white text-base tracking-tight">
-              Individual Player Awards (Títulos Individuales)
-            </h3>
-          </div>
-          <span className="badge bg-purple-400/10 text-purple-300 border border-purple-400/20 font-bold font-mono">
-            {individualTrophies.length} {individualTrophies.length === 1 ? "Award" : "Awards"}
-          </span>
-        </div>
-
-        {individualTrophies.length === 0 ? (
-          <p className="text-white/30 text-sm py-4 text-center">
-            No individual player awards recorded for this season
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {individualTrophies.map((trophy) => {
-              // Extract player name if included in icon/name string
-              const matchedPlayer = players.find(
-                (p) =>
-                  trophy.icon &&
-                  (p.id === trophy.icon ||
-                    trophy.trophy_name.toLowerCase().includes(p.full_name.toLowerCase()))
-              );
-
-              const initials = matchedPlayer
-                ? getPlayerInitials(matchedPlayer.full_name)
-                : null;
-              const [gradStart, gradEnd] = matchedPlayer
-                ? getPlayerAvatarGradient(matchedPlayer.full_name)
-                : ["#a855f7", "#6366f1"];
-              const countryCode = matchedPlayer
-                ? getCountryCode(matchedPlayer.nationality)
-                : null;
-
-              return (
-                <div
-                  key={trophy.id}
-                  className="group relative flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0b111e]/90 border border-purple-400/30 hover:border-purple-400 shadow-md transition-all hover:-translate-y-0.5"
-                >
-                  {/* Trophy Icon */}
-                  <div className="w-14 h-14 rounded-xl bg-purple-500/15 border border-purple-400/20 flex items-center justify-center flex-shrink-0 shadow-inner">
-                    <TrophyIcon
-                      type={
-                        trophy.trophy_name.toLowerCase().includes("ballon")
-                          ? "ballon_dor"
-                          : trophy.trophy_name.toLowerCase().includes("boot")
-                          ? "golden_boot"
-                          : trophy.trophy_name.toLowerCase().includes("glove")
-                          ? "golden_glove"
-                          : "ballon_dor"
-                      }
-                      size={38}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="font-extrabold text-white text-sm truncate group-hover:text-purple-300 transition-colors">
-                      {trophy.trophy_name}
-                    </p>
-
-                    {matchedPlayer ? (
-                      <div className="flex items-center gap-2 mt-1">
-                        <div
-                          className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black text-white flex-shrink-0"
-                          style={{ background: `linear-gradient(135deg, ${gradStart}, ${gradEnd})` }}
-                        >
-                          {initials}
-                        </div>
-                        <span className="text-xs font-bold text-white/80 truncate">
-                          {matchedPlayer.full_name}
-                        </span>
-                        {countryCode && (
-                          <img
-                            src={`https://flagcdn.com/w40/${countryCode}.png`}
-                            alt=""
-                            className="w-3.5 h-2.5 object-cover rounded-[2px] flex-shrink-0"
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-purple-400/80 font-bold uppercase tracking-wider block mt-0.5">
-                        Individual Player Award
-                      </span>
-                    )}
-                  </div>
-
-                  {onDeleteTrophy && (
-                    <button
-                      onClick={() => onDeleteTrophy(trophy.id)}
-                      className="btn-danger p-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                      title="Delete Award"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                ) : (
+                  'Premio individual'
+                )
+              }
+              onDelete={onDeleteTrophy && (() => onDeleteTrophy(trophy))}
+            />
+          );
+        })}
+      </Shelf>
     </div>
+  );
+}
+
+interface ShelfProps {
+  title: string;
+  icon: ReactNode;
+  count: number;
+  empty: string;
+  children: ReactNode;
+}
+
+function Shelf({ title, icon, count, empty, children }: ShelfProps) {
+  return (
+    <section className="card p-4 sm:p-5" aria-label={title}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="section-title">
+          {icon}
+          {title}
+        </h2>
+        <span className="text-xs font-semibold tabular-nums text-white/45">{count}</span>
+      </div>
+      {count === 0 ? (
+        <p className="py-5 text-center text-sm text-white/40">{empty}</p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">{children}</ul>
+      )}
+    </section>
+  );
+}
+
+interface ShelfItemProps {
+  badge: ReactNode;
+  title: string;
+  subtitle: ReactNode;
+  onDelete?: () => void;
+}
+
+function ShelfItem({ badge, title, subtitle, onDelete }: ShelfItemProps) {
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-pitch-700 bg-pitch-900/50 py-2 pl-2 pr-1">
+      <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-400/5">{badge}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-white">{title}</p>
+        <div className="mt-0.5 truncate text-xs text-white/50">{subtitle}</div>
+      </div>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`Eliminar ${title}`}
+          className="icon-btn text-white/35 hover:bg-red-500/10 hover:text-red-300"
+        >
+          <Trash2 size={17} />
+        </button>
+      )}
+    </li>
   );
 }

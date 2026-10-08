@@ -2,6 +2,8 @@
 // src/components/history/TrophyIcons.tsx
 // Authentic SVG Football Trophy Badge Components (Champions League,
 // League Title, Cup, Ballon d'Or, Golden Boot, Golden Glove).
+// `type` can be a trophy type or a trophy/award name (English or
+// Spanish), e.g. "international", "Bota de Oro", "Premio Zamora".
 // ============================================================
 
 
@@ -24,7 +26,7 @@ interface TrophyIconProps {
 export function TrophyIcon({ type, className = "", size = 48 }: TrophyIconProps) {
   const normalized = (type || "").toLowerCase();
 
-  if (normalized.includes("champions") || normalized.includes("libertadores") || normalized === "champions") {
+  if (normalized.includes("champions") || normalized.includes("libertadores") || normalized === "international") {
     // UEFA Champions League / Copa Libertadores ("Big Ears")
     return (
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
@@ -77,7 +79,7 @@ export function TrophyIcon({ type, className = "", size = 48 }: TrophyIconProps)
     );
   }
 
-  if (normalized.includes("ballon") || normalized.includes("golden ball") || normalized === "ballon_dor") {
+  if (normalized.includes("ballon") || normalized.includes("balón") || normalized.includes("balon") || normalized.includes("golden ball") || normalized === "ballon_dor") {
     // Ballon d'Or / Golden Ball
     return (
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
@@ -105,7 +107,7 @@ export function TrophyIcon({ type, className = "", size = 48 }: TrophyIconProps)
     );
   }
 
-  if (normalized.includes("boot") || normalized.includes("botin") || normalized === "golden_boot") {
+  if (normalized.includes("boot") || normalized.includes("bota") || normalized.includes("botín") || normalized.includes("botin") || normalized.includes("pichichi") || normalized === "golden_boot") {
     // Golden Boot (Botin de Oro)
     return (
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
@@ -129,7 +131,7 @@ export function TrophyIcon({ type, className = "", size = 48 }: TrophyIconProps)
     );
   }
 
-  if (normalized.includes("glove") || normalized.includes("guante") || normalized === "golden_glove") {
+  if (normalized.includes("glove") || normalized.includes("guante") || normalized.includes("zamora") || normalized === "golden_glove") {
     // Golden Glove (Guante de Oro)
     return (
       <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>

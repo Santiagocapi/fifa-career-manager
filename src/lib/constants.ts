@@ -247,14 +247,18 @@ export const SCOUTING_LIST_TYPES: {
 
 // ============================================================
 // TROPHY TYPES
+// The badge for each type is drawn by TrophyIcon (SVG artwork).
 // ============================================================
-export const TROPHY_TYPES: { value: TrophyType; label: string; emoji: string }[] = [
-  { value: 'league',        label: 'League Title',       emoji: '🥇' },
-  { value: 'cup',           label: 'Domestic Cup',       emoji: '🏆' },
-  { value: 'international', label: 'International Cup',  emoji: '🌍' },
-  { value: 'individual',    label: 'Individual Award',   emoji: '⚽' },
-  { value: 'other',         label: 'Other',              emoji: '🎖️' },
+export const TROPHY_TYPES: { value: TrophyType; label: string }[] = [
+  { value: 'league',        label: 'Liga' },
+  { value: 'cup',           label: 'Copa nacional' },
+  { value: 'international', label: 'Copa internacional' },
+  { value: 'individual',    label: 'Premio individual' },
+  { value: 'other',         label: 'Otro' },
 ];
+
+export const getTrophyTypeLabel = (type: TrophyType): string =>
+  TROPHY_TYPES.find((t) => t.value === type)?.label ?? type;
 
 // ============================================================
 // HELPERS: Money formatting

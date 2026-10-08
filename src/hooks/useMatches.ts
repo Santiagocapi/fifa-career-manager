@@ -43,6 +43,11 @@ interface UseMatchesReturn {
   refetch: () => void;
 }
 
+// Same approximation used to backfill legacy rows in migration 003: a player with
+// no explicit flag is considered to have played only if they left a trace in the match.
+const didPlay = (e: { goals: number; assists: number; yellow_card: boolean; red_card: boolean }) =>
+  e.goals > 0 || e.assists > 0 || e.yellow_card || e.red_card;
+
 export const useMatches = (seasonId: string | null): UseMatchesReturn => {
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +146,7 @@ export const useMatches = (seasonId: string | null): UseMatchesReturn => {
       const eventRows = payload.playerEvents.map(e => ({
         match_id: newMatch.id,
         player_id: e.player_id,
+        played: e.played ?? didPlay(e),
         goals: e.goals,
         assists: e.assists,
         yellow_card: e.yellow_card,
@@ -250,6 +256,7 @@ export const useMatches = (seasonId: string | null): UseMatchesReturn => {
       const eventRows = payload.playerEvents.map(e => ({
         match_id: matchId,
         player_id: e.player_id,
+        played: e.played ?? didPlay(e),
         goals: e.goals,
         assists: e.assists,
         yellow_card: e.yellow_card,

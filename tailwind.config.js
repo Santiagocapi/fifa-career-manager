@@ -70,7 +70,6 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
 
       // Small captions used on dense mobile cards (11px)
@@ -103,7 +102,7 @@ export default {
         'fade-in':   'fade-in 0.25s ease-out',
         'sheet-up':  'sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1)',
         'dialog-in': 'dialog-in 0.2s ease-out',
-        'shimmer':   'shimmer 2s linear infinite',
+        'shimmer':   'shimmer 1.5s linear infinite',
       },
 
       // =============================================
@@ -113,7 +112,6 @@ export default {
         'neon-sm': '0 0 10px rgba(0, 255, 135, 0.25)',
         'neon':    '0 4px 20px rgba(0, 255, 135, 0.35)',
         'card':    '0 4px 24px rgba(0, 0, 0, 0.35)',
-        'card-hover': '0 8px 32px rgba(0, 0, 0, 0.5)',
         'sheet':   '0 -12px 40px rgba(0, 0, 0, 0.5)',
       },
 

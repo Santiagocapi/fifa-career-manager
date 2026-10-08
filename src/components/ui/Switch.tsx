@@ -3,13 +3,12 @@
 // Accessible on/off switch with a large tap area.
 // ============================================================
 
-import type { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label: ReactNode;
+  label: string;
   /** Hide the label visually (it is still read by screen readers) */
   hideLabel?: boolean;
   disabled?: boolean;
@@ -37,6 +36,7 @@ export default function Switch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={hideLabel ? label : undefined}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
@@ -58,7 +58,7 @@ export default function Switch({
           )}
         />
       </span>
-      <span className={clsx(hideLabel && 'sr-only')}>{label}</span>
+      {!hideLabel && <span>{label}</span>}
     </button>
   );
 }

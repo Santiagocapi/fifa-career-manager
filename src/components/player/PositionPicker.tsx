@@ -27,10 +27,10 @@ export default function PositionPicker({ value, onChange, label = 'Posición', e
         {required && <span className="text-neon-400"> *</span>}
       </span>
 
-      <div className="flex flex-col gap-2 rounded-2xl border border-pitch-600 bg-pitch-900 p-2.5">
+      <div className="flex flex-col gap-2 rounded-2xl border border-pitch-600 bg-pitch-900 p-2">
         {POSITION_GROUPS.map((group) => (
           <div key={group.value} className="flex items-start gap-2">
-            <span className="w-9 flex-shrink-0 pt-2.5 text-2xs font-bold uppercase text-white/35">{group.short}</span>
+            <span className="w-8 flex-shrink-0 pt-3 text-[10px] font-bold uppercase text-white/35">{group.short}</span>
             <div className="flex flex-wrap gap-1.5">
               {POSITIONS.filter((p) => p.group === group.value).map((position) => {
                 const selected = value === position.value;
@@ -45,7 +45,7 @@ export default function PositionPicker({ value, onChange, label = 'Posición', e
                     translate="no"
                     onClick={() => onChange(position.value)}
                     className={clsx(
-                      'h-10 min-w-[3.25rem] rounded-xl border px-2.5 text-xs font-black transition-colors active:scale-95',
+                      'h-10 min-w-[2.75rem] rounded-xl border px-2 text-xs font-black transition-colors active:scale-95 sm:min-w-[3.25rem]',
                       selected
                         ? clsx(POSITION_COLORS[group.value].bg, POSITION_COLORS[group.value].text, POSITION_COLORS[group.value].border)
                         : 'border-pitch-600 bg-pitch-800 text-white/60 hover:text-white'

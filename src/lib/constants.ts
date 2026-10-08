@@ -10,11 +10,11 @@ import { countries } from 'countries-list';
 import { BadgeDollarSign, Handshake, Sparkles, Target, type LucideIcon } from 'lucide-react';
 
 // ============================================================
-// COUNTRY FLAG HELPER
-// Converts a country name string (e.g. "Argentina") to an
-// emoji flag (e.g. "🇦🇷") using the countries-list package
-// for the ISO 3166-1 alpha-2 code lookup.
-// Returns empty string if country not found (graceful fallback).
+// COUNTRY CODE HELPER
+// Converts a nationality as typed by the user ("Argentina",
+// "españa", "ARG", "AR") to an ISO 3166-1 alpha-2 code, used to
+// load the flag image (see components/player/Flag.tsx).
+// Returns null if the country is not found (graceful fallback).
 // ============================================================
 const _countryNameToCode: Record<string, string> = {};
 for (const [code, data] of Object.entries(countries)) {
@@ -83,28 +83,6 @@ export const getCountryCode = (nationality: string | null | undefined): string |
   // 4. Full country name or alias in countries-list
   const code = _countryNameToCode[trimmed];
   return code ? code.toLowerCase() : null;
-};
-
-export const getCountryFlag = (nationality: string | null | undefined): string => {
-  if (!nationality) return '';
-  const trimmed = nationality.trim();
-  const upper = trimmed.toUpperCase();
-
-  // 1. Direct 2-letter ISO code (e.g. "AR", "ES", "SN", "US", "DE")
-  if (upper.length === 2 && upper in countries) {
-    return upper.split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
-  }
-
-  // 2. 3-letter FIFA code (e.g. "ARG", "ESP", "BRA", "ENG")
-  if (upper in COMMON_FIFA_CODES) {
-    const code = COMMON_FIFA_CODES[upper];
-    return code.split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
-  }
-
-  // 3. Full country name or alias (e.g. "Argentina", "Spain")
-  const code = _countryNameToCode[trimmed.toLowerCase()];
-  if (!code) return '';
-  return code.toUpperCase().split('').map(char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt(0))).join('');
 };
 
 export const GROUP_ORDER: Record<string, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -322,18 +300,6 @@ export const getPlayerInitials = (name: string): string => {
   const parts = name.trim().split(' ');
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-};
-
-// ============================================================
-// OVR GROWTH COLOR
-// Returns a color class based on growth direction
-// ============================================================
-export const getGrowthColor = (start: number | null, end: number | null): string => {
-  if (start == null || end == null) return 'text-white/50';
-  const diff = end - start;
-  if (diff > 0) return 'text-neon-400';
-  if (diff < 0) return 'text-red-400';
-  return 'text-white/50';
 };
 
 // ============================================================

@@ -122,26 +122,36 @@ export const sortPlayersByPosition = <T extends { preferred_position: PlayerPosi
 // POSITIONS
 // ============================================================
 
-export const POSITIONS: { value: PlayerPosition; label: string; group: 'GK' | 'DEF' | 'MID' | 'FWD' }[] = [
+export type PositionGroup = 'GK' | 'DEF' | 'MID' | 'FWD';
+
+export const POSITIONS: { value: PlayerPosition; label: string; group: PositionGroup }[] = [
   // Goalkeeper
-  { value: 'GK',  label: 'Goalkeeper',        group: 'GK' },
+  { value: 'GK',  label: 'Portero',               group: 'GK' },
   // Defenders
-  { value: 'CB',  label: 'Centre-Back',        group: 'DEF' },
-  { value: 'LB',  label: 'Left Back',          group: 'DEF' },
-  { value: 'RB',  label: 'Right Back',         group: 'DEF' },
-  { value: 'LWB', label: 'Left Wing-Back',     group: 'DEF' },
-  { value: 'RWB', label: 'Right Wing-Back',    group: 'DEF' },
+  { value: 'CB',  label: 'Defensa central',       group: 'DEF' },
+  { value: 'LB',  label: 'Lateral izquierdo',     group: 'DEF' },
+  { value: 'RB',  label: 'Lateral derecho',       group: 'DEF' },
+  { value: 'LWB', label: 'Carrilero izquierdo',   group: 'DEF' },
+  { value: 'RWB', label: 'Carrilero derecho',     group: 'DEF' },
   // Midfielders
-  { value: 'CDM', label: 'Defensive Mid',      group: 'MID' },
-  { value: 'CM',  label: 'Central Mid',        group: 'MID' },
-  { value: 'CAM', label: 'Attacking Mid',      group: 'MID' },
-  { value: 'LM',  label: 'Left Mid',           group: 'MID' },
-  { value: 'RM',  label: 'Right Mid',          group: 'MID' },
+  { value: 'CDM', label: 'Mediocentro defensivo', group: 'MID' },
+  { value: 'CM',  label: 'Mediocentro',           group: 'MID' },
+  { value: 'CAM', label: 'Mediapunta',            group: 'MID' },
+  { value: 'LM',  label: 'Medio izquierdo',       group: 'MID' },
+  { value: 'RM',  label: 'Medio derecho',         group: 'MID' },
   // Forwards
-  { value: 'LW',  label: 'Left Winger',        group: 'FWD' },
-  { value: 'RW',  label: 'Right Winger',       group: 'FWD' },
-  { value: 'CF',  label: 'Centre Forward',     group: 'FWD' },
-  { value: 'ST',  label: 'Striker',            group: 'FWD' },
+  { value: 'LW',  label: 'Extremo izquierdo',     group: 'FWD' },
+  { value: 'RW',  label: 'Extremo derecho',       group: 'FWD' },
+  { value: 'CF',  label: 'Segundo delantero',     group: 'FWD' },
+  { value: 'ST',  label: 'Delantero centro',      group: 'FWD' },
+];
+
+// Position groups in squad order, with the labels shown in filters and headers
+export const POSITION_GROUPS: { value: PositionGroup; label: string; short: string }[] = [
+  { value: 'GK',  label: 'Porteros',        short: 'POR' },
+  { value: 'DEF', label: 'Defensas',        short: 'DEF' },
+  { value: 'MID', label: 'Centrocampistas', short: 'MED' },
+  { value: 'FWD', label: 'Delanteros',      short: 'DEL' },
 ];
 
 // Color classes by position group (Tailwind classes)
@@ -153,12 +163,12 @@ export const POSITION_COLORS: Record<string, { bg: string; text: string; border:
 };
 
 // Get the group for a given position value
-export const getPositionGroup = (position: string): 'GK' | 'DEF' | 'MID' | 'FWD' => {
+export const getPositionGroup = (position: string): PositionGroup => {
   return POSITIONS.find(p => p.value === position)?.group ?? 'MID';
 };
 
 // Get display label for a position
-export const getPositionLabel = (position: PlayerPosition): string => {
+export const getPositionLabel = (position: string): string => {
   return POSITIONS.find(p => p.value === position)?.label ?? position;
 };
 
@@ -239,12 +249,12 @@ export const formatValue = (cents: number | null | undefined): string => {
   return `$${dollars.toFixed(0)}`;
 };
 
-// Convert wage cents to display string: 500000 -> "$5K/wk"
+// Convert wage cents to display string: 500000 -> "$5K/sem"
 export const formatWage = (cents: number | null | undefined): string => {
   if (cents == null || cents === 0) return '—';
   const dollars = cents / 100;
-  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(0)}K/wk`;
-  return `$${dollars.toFixed(0)}/wk`;
+  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(0)}K/sem`;
+  return `$${dollars.toFixed(0)}/sem`;
 };
 
 // Convert dollar string input to cents: "15000000" → 1500000000
@@ -302,17 +312,12 @@ export const getGrowthColor = (start: number | null, end: number | null): string
 
 // ============================================================
 // OVR TIER VISUAL HIGHLIGHTS
-// Returns distinct badge CSS classes based on player OVR rating:
-// - 90+ : Legendary Gold Neon (👑)
-// - 85-89: Elite Gold (⭐)
-// - 80-84: High Tier Emerald (💚)
-// - 75-79: Good Cyan (💙)
-// - < 75 : Standard Slate (⚪)
+// Badge classes by player OVR rating, from gold (90+) down to
+// a neutral slate for squad players under 75.
 // ============================================================
 export interface OvrTierStyle {
   tier: 'legendary' | 'elite' | 'high' | 'good' | 'standard';
   badgeClass: string;
-  glowClass: string;
   label: string;
 }
 
@@ -321,39 +326,34 @@ export const getOvrBadgeStyle = (ovr: number | null | undefined): OvrTierStyle =
   if (val >= 90) {
     return {
       tier: 'legendary',
-      badgeClass: 'bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-slate-950 font-black border-2 border-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.7)]',
-      glowClass: 'shadow-[0_0_20px_rgba(245,158,11,0.5)] border-amber-400',
-      label: '90+ Legendary',
+      badgeClass: 'bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 text-pitch-950 border-amber-100 shadow-[0_0_12px_theme(colors.amber.400/45%)]',
+      label: 'Leyenda (90+)',
     };
   }
   if (val >= 85) {
     return {
       tier: 'elite',
-      badgeClass: 'bg-gradient-to-br from-amber-500/30 via-amber-600/20 to-amber-600/10 border-2 border-amber-400 text-amber-300 font-extrabold shadow-[0_0_10px_rgba(245,158,11,0.35)]',
-      glowClass: 'border-amber-400/80',
-      label: '85-89 Elite',
+      badgeClass: 'bg-amber-400/15 text-amber-300 border-amber-400/70',
+      label: 'Élite (85-89)',
     };
   }
   if (val >= 80) {
     return {
       tier: 'high',
-      badgeClass: 'bg-gradient-to-br from-emerald-500/30 to-emerald-600/15 border-2 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_8px_rgba(52,211,153,0.25)]',
-      glowClass: 'border-emerald-400/70',
-      label: '80-84 High Tier',
+      badgeClass: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/60',
+      label: 'Alto nivel (80-84)',
     };
   }
   if (val >= 75) {
     return {
       tier: 'good',
-      badgeClass: 'bg-gradient-to-br from-cyan-500/25 to-blue-600/15 border border-cyan-400/80 text-cyan-300 font-bold shadow-sm',
-      glowClass: 'border-cyan-400/50',
-      label: '75-79 Good',
+      badgeClass: 'bg-sky-400/15 text-sky-300 border-sky-400/50',
+      label: 'Bueno (75-79)',
     };
   }
   return {
     tier: 'standard',
-    badgeClass: 'bg-slate-800/80 border border-slate-600 text-slate-300 font-medium',
-    glowClass: 'border-slate-600',
-    label: '<75 Standard',
+    badgeClass: 'bg-pitch-700 text-white/75 border-pitch-500',
+    label: 'Estándar (<75)',
   };
 };

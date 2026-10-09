@@ -101,7 +101,7 @@ export const useLineup = (seasonId: string | null): UseLineupReturn => {
   }, []);
 
   const save = useCallback(
-    (targetSeasonId: string, next: LineupState): Promise<void> => {
+    (targetSeasonId: string, next: LineupState): Promise<boolean> => {
       const slots = FORMATION_SLOTS[next.scheme];
       const payload = next.ids.flatMap((playerId, index) =>
         playerId
@@ -122,10 +122,12 @@ export const useLineup = (seasonId: string | null): UseLineupReturn => {
           p_slots: payload,
         });
         if (err) setError(err.message);
+        return !err;
       };
 
-      saveQueue.current = saveQueue.current.then(run, run);
-      return saveQueue.current;
+      const result = saveQueue.current.then(run);
+      saveQueue.current = result.then(() => undefined);
+      return result;
     },
     []
   );
@@ -177,8 +179,9 @@ export const useLineup = (seasonId: string | null): UseLineupReturn => {
       if (legacy) {
         apply(legacy);
         setLoading(false);
-        save(seasonId, legacy).then(() => {
-          if (!cancelled) clearLegacyLineup(seasonId);
+        // Only drop the browser copy once the server has it
+        save(seasonId, legacy).then((saved) => {
+          if (saved) clearLegacyLineup(seasonId);
         });
         return;
       }

@@ -10,6 +10,7 @@ import { clsx } from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuth } from '../../hooks/useAuth';
 import { NAV_ITEMS } from './navItems';
+import { getGameVersionShort } from '../../lib/gameVersions';
 import AppLogo from '../ui/AppLogo';
 import ClubCrest from '../ui/ClubCrest';
 
@@ -69,7 +70,9 @@ export default function Sidebar() {
                   {activeCareer?.club_name ?? 'Elige una carrera'}
                 </span>
                 <span className="block truncate text-xs text-white/50">
-                  {activeSeason ? `Temporada ${activeSeason.year_label}` : 'Cambiar de carrera'}
+                  {[getGameVersionShort(activeCareer?.game_version), activeSeason ? `Temporada ${activeSeason.year_label}` : 'Cambiar de carrera']
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </span>
               <ChevronsUpDown size={16} className="flex-shrink-0 text-white/40" />

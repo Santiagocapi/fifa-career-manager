@@ -52,6 +52,7 @@ export interface Career {
   manager_name: string;
   league: string | null;
   country: string | null;
+  game_version: string | null;    // e.g. "FC26", "FIFA23" (see GAME_VERSIONS)
   created_at: string;
   updated_at: string;
 }

@@ -6,8 +6,9 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { Plus, Trophy, Loader2, Trash2, MapPin, UserRound } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
+import { clsx } from 'clsx';
+import { Plus, Trophy, Loader2, Trash2, MapPin, UserRound, Pencil, Save, Gamepad2 } from 'lucide-react';
 import { useCareers } from '../hooks/useCareers';
 import { useAppStore } from '../store/useAppStore';
 import PageHeader from '../components/ui/PageHeader';
@@ -17,6 +18,7 @@ import Sheet from '../components/ui/Sheet';
 import Field from '../components/ui/Field';
 import ClubCrest from '../components/ui/ClubCrest';
 import { useConfirm } from '../components/ui/confirm';
+import { GAME_VERSIONS, getGameVersionShort } from '../lib/gameVersions';
 import type { Career, CreateCareerDto } from '../types/database';
 
 interface CareerFormData {
@@ -24,17 +26,29 @@ interface CareerFormData {
   manager_name: string;
   league: string;
   country: string;
+  game_version: string;
 }
 
+const NEW_CAREER: CareerFormData = {
+  club_name: '',
+  manager_name: '',
+  league: '',
+  country: '',
+  game_version: GAME_VERSIONS[0].value,
+};
+
 export default function CareerSelect() {
-  const { careers, loading, error, createCareer, deleteCareer } = useCareers();
+  const { careers, loading, error, createCareer, updateCareer, deleteCareer } = useCareers();
   const { activeCareer, setActiveCareer, setActiveSeason } = useAppStore();
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
+  const [editingCareer, setEditingCareer] = useState<Career | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CareerFormData>();
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CareerFormData>({
+    defaultValues: NEW_CAREER,
+  });
 
   const handleSelectCareer = (career: Career) => {
     setActiveCareer(career);
@@ -43,7 +57,20 @@ export default function CareerSelect() {
   };
 
   const openForm = () => {
-    reset();
+    setEditingCareer(null);
+    reset(NEW_CAREER);
+    setShowForm(true);
+  };
+
+  const openEditForm = (career: Career) => {
+    setEditingCareer(career);
+    reset({
+      club_name: career.club_name,
+      manager_name: career.manager_name,
+      league: career.league ?? '',
+      country: career.country ?? '',
+      game_version: career.game_version ?? '',
+    });
     setShowForm(true);
   };
 
@@ -53,7 +80,17 @@ export default function CareerSelect() {
       manager_name: data.manager_name.trim(),
       league: data.league.trim() || null,
       country: data.country.trim() || null,
+      game_version: data.game_version || null,
     };
+
+    if (editingCareer) {
+      await updateCareer(editingCareer.id, dto);
+      // Keep the copy in the store in sync so headers show the change
+      if (activeCareer?.id === editingCareer.id) setActiveCareer({ ...activeCareer, ...dto });
+      setShowForm(false);
+      return;
+    }
+
     const career = await createCareer(dto);
     if (career) {
       setActiveCareer(career);
@@ -127,6 +164,11 @@ export default function CareerSelect() {
                 <div className="pointer-events-none min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h2 className="truncate text-base font-bold text-white">{career.club_name}</h2>
+                    {career.game_version && (
+                      <span translate="no" className="badge flex-shrink-0 border-electric-400/30 bg-electric-400/10 text-electric-300">
+                        {getGameVersionShort(career.game_version)}
+                      </span>
+                    )}
                     {isActive && (
                       <span className="badge flex-shrink-0 border-neon-400/30 bg-neon-400/10 text-neon-300">Activa</span>
                     )}
@@ -140,6 +182,14 @@ export default function CareerSelect() {
                     {career.manager_name}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => openEditForm(career)}
+                  aria-label={`Editar la carrera de ${career.club_name}`}
+                  className="icon-btn relative z-10 -mr-2 text-white/35"
+                >
+                  <Pencil size={18} />
+                </button>
                 <button
                   type="button"
                   onClick={() => handleDelete(career)}
@@ -158,16 +208,22 @@ export default function CareerSelect() {
       <Sheet
         open={showForm}
         onClose={() => setShowForm(false)}
-        title="Nueva carrera"
-        description="Solo necesitas el club y tu nombre; lo demás es opcional."
+        title={editingCareer ? 'Editar carrera' : 'Nueva carrera'}
+        description={editingCareer ? editingCareer.club_name : 'Solo necesitas el club y tu nombre; lo demás es opcional.'}
         footer={
           <div className="flex gap-3">
             <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">
               Cancelar
             </button>
             <button type="submit" form="career-form" disabled={isSubmitting} className="btn-primary flex-1">
-              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-              Crear carrera
+              {isSubmitting ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : editingCareer ? (
+                <Save size={18} />
+              ) : (
+                <Plus size={18} />
+              )}
+              {editingCareer ? 'Guardar' : 'Crear carrera'}
             </button>
           </div>
         }
@@ -195,6 +251,37 @@ export default function CareerSelect() {
           <Field label="País">
             <input autoComplete="country-name" placeholder="Argentina" {...register('country')} />
           </Field>
+          <Controller
+            control={control}
+            name="game_version"
+            render={({ field }) => (
+              <div role="radiogroup" aria-label="Juego" className="field sm:col-span-2">
+                <span className="field-label flex items-center gap-1.5">
+                  <Gamepad2 size={15} className="text-white/50" /> Juego
+                </span>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" translate="no">
+                  {GAME_VERSIONS.map((game) => (
+                    <button
+                      key={game.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={field.value === game.value}
+                      onClick={() => field.onChange(game.value)}
+                      className={clsx(
+                        'flex h-11 flex-col items-center justify-center rounded-xl border text-sm font-bold leading-tight transition-colors active:scale-[0.98]',
+                        field.value === game.value
+                          ? 'border-neon-400/60 bg-neon-400/10 text-white'
+                          : 'border-pitch-600 bg-pitch-800 text-white/60'
+                      )}
+                    >
+                      {getGameVersionShort(game.value)}
+                    </button>
+                  ))}
+                </div>
+                <span className="field-hint">Para saber de qué edición es cada partida.</span>
+              </div>
+            )}
+          />
         </form>
       </Sheet>
     </div>

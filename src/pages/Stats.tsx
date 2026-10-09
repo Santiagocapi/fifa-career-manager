@@ -47,7 +47,6 @@ export default function Stats() {
   const readOnly = activeSeason?.is_closed ?? false;
   const canLog = !!activeSeason && !readOnly && !playersLoading;
   const mvpRanking = useMemo(() => rankMvps(matches, players), [matches, players]);
-  const knownOpponents = useMemo(() => h2hRecords.map((r) => r.opponent), [h2hRecords]);
 
   const openNewMatch = () => {
     setEditingMatch(null);
@@ -225,7 +224,6 @@ export default function Stats() {
         players={players}
         seasonId={activeSeason.id}
         teamName={activeCareer?.club_name ?? 'Tu equipo'}
-        knownOpponents={knownOpponents}
         saveError={error}
         onClose={() => {
           setLoggerOpen(false);

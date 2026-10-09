@@ -12,6 +12,7 @@ import { TROPHY_TYPES } from '../../lib/constants';
 import Sheet from '../ui/Sheet';
 import Field from '../ui/Field';
 import { TrophyIcon } from './TrophyIcons';
+import PlayerPicker from '../player/PlayerPicker';
 
 export interface TrophyFormData {
   trophy_name: string;
@@ -112,16 +113,22 @@ export default function TrophyFormSheet({ open, seasonLabel, players, onClose, o
         </Field>
 
         {trophyType === 'individual' && (
-          <Field label="Ganador">
-            <select {...register('recipient_id')}>
-              <option value="">Sin asignar</option>
-              {players.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name} ({p.preferred_position})
-                </option>
-              ))}
-            </select>
-          </Field>
+          <Controller
+            control={control}
+            name="recipient_id"
+            render={({ field }) => (
+              <div className="field">
+                <span className="field-label">Ganador</span>
+                <PlayerPicker
+                  label="Ganador del premio"
+                  emptyLabel="Sin asignar"
+                  value={field.value}
+                  onChange={field.onChange}
+                  groups={[{ players }]}
+                />
+              </div>
+            )}
+          />
         )}
       </form>
     </Sheet>

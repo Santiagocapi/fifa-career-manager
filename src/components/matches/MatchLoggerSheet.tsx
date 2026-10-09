@@ -20,6 +20,7 @@ import SegmentedTabs from '../ui/SegmentedTabs';
 import { useConfirm } from '../ui/confirm';
 import { BallIcon, CardIcon, GloveIcon } from '../icons/FootballIcons';
 import PlayerEventRow from './PlayerEventRow';
+import PlayerPicker from '../player/PlayerPicker';
 import {
   applyCleanSheets,
   applySubstitution,
@@ -333,31 +334,22 @@ function MatchLogger({
               )}
             </section>
 
-            <Field label="MVP del partido">
-              <select
+            <div className="field">
+              <span className="field-label">MVP del partido</span>
+              <PlayerPicker
+                label="MVP del partido"
+                emptyLabel="Sin MVP"
                 value={mvpPlayerId}
-                onChange={(e) => {
-                  setMvpPlayerId(e.target.value);
+                onChange={(id) => {
+                  setMvpPlayerId(id);
                   setDirty(true);
                 }}
-              >
-                <option value="">Sin MVP</option>
-                <optgroup label="Titulares">
-                  {starters.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name} ({p.preferred_position})
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Suplentes">
-                  {bench.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name} ({p.preferred_position})
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </Field>
+                groups={[
+                  { label: 'Titulares', players: starters },
+                  { label: 'Suplentes', players: bench },
+                ]}
+              />
+            </div>
 
             {match && (
               <button type="button" onClick={handleDelete} className="btn-ghost self-start text-red-300 hover:bg-red-500/10">

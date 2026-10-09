@@ -13,6 +13,7 @@ import { useSeasons } from '../hooks/useSeasons';
 import { useTrophies } from '../hooks/useTrophies';
 import { useMatches } from '../hooks/useMatches';
 import { formatValue } from '../lib/constants';
+import { getGameVersionShort } from '../lib/gameVersions';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import SeasonRecord from '../components/matches/SeasonRecord';
@@ -43,6 +44,11 @@ export default function Dashboard() {
         title={activeCareer.club_name}
         subtitle={
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {activeCareer.game_version && (
+              <span translate="no" className="badge border-electric-400/30 bg-electric-400/10 text-electric-300">
+                {getGameVersionShort(activeCareer.game_version)}
+              </span>
+            )}
             {activeCareer.league && <span>{activeCareer.league}</span>}
             {activeCareer.league && activeSeason && <span aria-hidden="true">·</span>}
             {activeSeason && (

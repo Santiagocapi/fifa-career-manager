@@ -1,6 +1,6 @@
 # FIFA Career Manager
 
-> A production-grade, full-stack web application designed for EA FC Career Mode managers to organize, log, analyze, and showcase multi-season career saves.
+> A full-stack web application for EA FC Career Mode managers to log matches, plan tactics, scout players, and keep the history of their multi-season career saves.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
@@ -13,7 +13,7 @@
 
 ## Overview
 
-FIFA Career Manager bridges the gap between console or PC gameplay and career statistics tracking. Built with modern web standards, reactive state management, and real-time backend persistence, this suite enables football gaming enthusiasts to log match statistics, design tactical lineups, scout transfer targets, archive past seasons, and showcase trophies with realistic visuals.
+FIFA Career Manager bridges the gap between console or PC gameplay and career statistics tracking. Built with React, TypeScript, and Supabase, it lets football gaming enthusiasts log match statistics, design tactical lineups, scout transfer targets, archive past seasons, and showcase trophies. Every user only sees their own data, enforced by Row Level Security in the database.
 
 ---
 
@@ -99,9 +99,9 @@ The PostgreSQL database schema is managed via Supabase and comprises the followi
 - **`careers`**: Stores career saves (`id`, `user_id`, `manager_name`, `club_name`, `created_at`).
 - **`seasons`**: Multi-season records per career (`id`, `career_id`, `season_number`, `year_label`, `is_closed`).
 - **`players`**: Player profiles linked to a career save (`id`, `career_id`, `full_name`, `preferred_position`, `nationality`, `joined_year`).
-- **`season_stats`**: Per-season stats for players (`id`, `season_id`, `player_id`, `ovr_start`, `ovr_end`, `goals`, `assists`, `matches_played`, `clean_sheets`, `wage`).
-- **`matches`**: Logged match results (`id`, `season_id`, `career_id`, `opponent`, `competition`, `team_score`, `opponent_score`, `mvp_player_id`).
-- **`match_events`**: Player performances per match (`id`, `match_id`, `player_id`, `played`, `substituted_off`, `goals`, `assists`, `yellow_card`, `red_card`, `clean_sheet`).
+- **`season_stats`**: Per-season stats for players (`id`, `season_id`, `player_id`, `ovr_start`, `ovr_end`, `goals`, `assists`, `matches_played`, `clean_sheets`, `salary`, `is_injured`). Counters are derived from `match_events`.
+- **`matches`**: Logged match results (`id`, `season_id`, `opponent`, `competition`, `team_score`, `opponent_score`, `result`, `mvp_player_id`, `match_date`).
+- **`match_events`**: Player performances per match (`id`, `match_id`, `player_id`, `played`, `goals`, `assists`, `yellow_card`, `red_card`, `clean_sheet`, `injured`). Written only through the `log_match`, `update_match` and `delete_match` functions.
 - **`scouting_list`**: Watchlist entries (`id`, `career_id`, `full_name`, `position`, `list_type`, `estimated_value`).
 - **`trophies`**: Club and player awards (`id`, `season_id`, `trophy_name`, `trophy_type`, `icon`).
 - **`formations`** / **`formation_players`**: Chosen scheme per season and the player in each pitch slot (`slot_index`); written through the `save_lineup` function.
@@ -127,7 +127,12 @@ fifa-career-manager/
 |   |-- App.tsx                 # App router and layout entry
 |   |-- main.tsx                # React DOM render entry
 |   `-- index.css               # Global styles and Tailwind CSS directives
+|-- supabase/
+|   |-- migrations/             # Numbered SQL migrations (run in order)
+|   `-- scripts/                # One-time data fixes, not migrations
+|-- .github/                    # CI workflow, PR template, Dependabot
 |-- .env.example                # Supabase API key configuration template
+|-- LICENSE                     # MIT
 |-- package.json
 |-- tailwind.config.js          # Tailwind theme and color definitions
 |-- tsconfig.json               # TypeScript compiler config
@@ -143,11 +148,11 @@ Follow these steps to run the application locally on your machine:
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher
 - **npm**: `v9.0.0` or higher
-- A **Supabase** account (Free Tier works as intended)
+- A **Supabase** account (Free Tier works as intended) and an empty Supabase project
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/fifa-career-manager.git
+git clone https://github.com/Santiagocapi/fifa-career-manager.git
 cd fifa-career-manager
 ```
 
@@ -157,17 +162,28 @@ npm install
 ```
 
 ### 3. Configure Environment Variables
-Create a `.env` file in the root directory by copying the template:
+Create a `.env.local` file in the root directory by copying the template (it is git-ignored):
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
-Fill in your Supabase credentials:
+Fill in your Supabase credentials (Project Settings -> API). Use the public anon / publishable key only, never the `service_role` or secret key:
 ```env
 VITE_SUPABASE_URL=https://your-supabase-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 ```
 
-### 4. Run Development Server
+### 4. Create the Database Schema
+In the Supabase dashboard open **SQL Editor** and run every file in `supabase/migrations/` **in numeric order** (`001_...` first). Each migration enables Row Level Security on the tables it creates.
+
+Files in `supabase/scripts/` are one-time data fixes for a specific database and are **not** needed on a fresh install.
+
+### 5. Configure Authentication
+In the Supabase dashboard:
+1. **Authentication -> Providers -> Email**: enable **Confirm email** and set the minimum password length to 8.
+2. **Authentication -> URL Configuration**: set **Site URL** to your deployed URL and add `http://localhost:5173/**` to **Redirect URLs** so local development keeps working.
+3. **Project Settings -> Authentication -> SMTP**: connect your own SMTP provider. The default Supabase mail server only allows a few emails per hour, which blocks sign-ups as soon as several people register in a short time.
+
+### 6. Run Development Server
 ```bash
 npm run dev
 ```
@@ -192,12 +208,17 @@ All commit messages should follow the Conventional Commits specification:
 - `docs: add system architecture diagram`
 
 ### Pull Request Checklist
-1. Ensure `npx tsc --noEmit` passes with 0 errors.
+1. Ensure `npx tsc -b`, `npm run lint` and `npm run build` pass with 0 errors (CI runs the same checks).
 2. Verify responsive layout on mobile screens (`< 640px`) and desktop screens.
-3. Include a detailed summary of changes in the PR description.
+3. Add a numbered migration in `supabase/migrations/` for any schema change and update `src/types/database.ts` in the same PR.
+4. Include a detailed summary of changes in the PR description.
 
 ---
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more details.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more details.
+
+## Disclaimer
+
+This is an independent fan project. It is not affiliated with, endorsed by, or sponsored by Electronic Arts Inc. or EA SPORTS. EA SPORTS FC and related names are trademarks of their respective owners.

@@ -17,6 +17,7 @@ import InlineAlert from '../components/ui/InlineAlert';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import SeasonRecord from '../components/matches/SeasonRecord';
 import MatchListItem from '../components/matches/MatchListItem';
+import { useLineup } from '../hooks/useLineup';
 import MatchLoggerSheet, { type MatchFormPayload } from '../components/matches/MatchLoggerSheet';
 import Leaderboard from '../components/matches/Leaderboard';
 import MvpRanking from '../components/matches/MvpRanking';
@@ -36,6 +37,7 @@ export default function Stats() {
   const { matches, h2hRecords, loading: matchesLoading, error, logMatch, updateMatch, deleteMatch } = useMatches(
     activeSeason?.id ?? null
   );
+  const { lineupIds, loading: lineupLoading } = useLineup(activeSeason?.id ?? null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -45,7 +47,8 @@ export default function Stats() {
 
   // A closed season is read-only
   const readOnly = activeSeason?.is_closed ?? false;
-  const canLog = !!activeSeason && !readOnly && !playersLoading;
+  // The logger pre-fills the starters from the saved lineup, so it needs it loaded
+  const canLog = !!activeSeason && !readOnly && !playersLoading && !lineupLoading;
   const mvpRanking = useMemo(() => rankMvps(matches, players), [matches, players]);
 
   const openNewMatch = () => {
@@ -222,7 +225,7 @@ export default function Stats() {
         open={loggerOpen}
         match={editingMatch}
         players={players}
-        seasonId={activeSeason.id}
+        lineupIds={lineupIds}
         teamName={activeCareer?.club_name ?? 'Tu equipo'}
         saveError={error}
         onClose={() => {

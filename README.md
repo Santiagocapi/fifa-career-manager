@@ -75,7 +75,7 @@ FIFA Career Manager bridges the gap between console or PC gameplay and career st
 +---------------------------------------------+-------------+
 |                 Zustand Global State Stores               |
 |       - useAppStore.ts    (Active Career & Season)        |
-|       - useTacticsStore.ts (Lineups & Formations)         |
+|   (Lineups & formations live in DB via useLineup.ts)      |
 +-------------+-------------------------------+-------------+
               | Executes DB Queries           | Updates State
               v                               |
@@ -104,6 +104,7 @@ The PostgreSQL database schema is managed via Supabase and comprises the followi
 - **`match_events`**: Player performances per match (`id`, `match_id`, `player_id`, `played`, `substituted_off`, `goals`, `assists`, `yellow_card`, `red_card`, `clean_sheet`).
 - **`scouting_list`**: Watchlist entries (`id`, `career_id`, `full_name`, `position`, `list_type`, `estimated_value`).
 - **`trophies`**: Club and player awards (`id`, `season_id`, `trophy_name`, `trophy_type`, `icon`).
+- **`formations`** / **`formation_players`**: Chosen scheme per season and the player in each pitch slot (`slot_index`); written through the `save_lineup` function.
 
 ---
 
@@ -121,7 +122,7 @@ fifa-career-manager/
 |   |-- hooks/                  # Custom React hooks (usePlayers, useMatches, etc.)
 |   |-- lib/                    # Helper constants, country flags, OVR badge styles
 |   |-- pages/                  # Main route views (Squad, Tactics, Stats, etc.)
-|   |-- store/                  # Zustand global stores (useAppStore, useTacticsStore)
+|   |-- store/                  # Zustand global store (useAppStore)
 |   |-- types/                  # Database TypeScript interfaces
 |   |-- App.tsx                 # App router and layout entry
 |   |-- main.tsx                # React DOM render entry

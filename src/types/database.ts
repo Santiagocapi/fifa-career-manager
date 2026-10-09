@@ -174,7 +174,8 @@ export interface FormationPlayer {
   player_id: string;
   position_x: number;   // 0.0 – 1.0 (relative to pitch width)
   position_y: number;   // 0.0 – 1.0 (relative to pitch height)
-  slot_label: string | null;
+  slot_label: string | null;   // pitch role of the slot, e.g. "CB"
+  slot_index: number | null;   // 0..10, position in the scheme's slot list
 }
 
 export interface Trophy {

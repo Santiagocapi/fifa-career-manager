@@ -1,8 +1,8 @@
 // ============================================================
 // src/pages/Tactics.tsx
 // Tactical board: formation, pitch with the starting XI, line
-// ratings and substitutes. The lineup is stored per season in
-// useTacticsStore and feeds the match logger's starters.
+// ratings and substitutes. The lineup is stored per season in the
+// database (useLineup) and feeds the match logger's starters.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Users } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayers } from '../hooks/usePlayers';
-import { useTacticsStore } from '../store/useTacticsStore';
+import { useLineup } from '../hooks/useLineup';
 import { sortPlayersByPosition } from '../lib/constants';
 import type { FormationScheme } from '../types/database';
 import PageHeader from '../components/ui/PageHeader';
@@ -25,27 +25,31 @@ import { buildBestXI, buildStartingXI, computeLineRatings, getSlots } from '../c
 export default function Tactics() {
   const { activeCareer, activeSeason } = useAppStore();
   const { players, loading } = usePlayers(activeCareer?.id ?? null, activeSeason?.id ?? null);
-  const { formations, lineups, setFormation, setLineup, swapPitchSlots, setPitchSlot } = useTacticsStore();
-
-  const seasonId = activeSeason?.id ?? 'default';
-  const currentScheme: FormationScheme = formations[seasonId] ?? '4-3-3 Attack';
-  const storedLineup = lineups[seasonId];
+  const {
+    scheme: currentScheme,
+    lineupIds: storedLineup,
+    loading: lineupLoading,
+    setScheme,
+    setLineup,
+    swapSlots,
+    setSlot,
+  } = useLineup(activeSeason?.id ?? null);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
 
   const sortedPlayers = useMemo(() => sortPlayersByPosition(players), [players]);
 
   const startingXI = useMemo(
-    () => buildStartingXI(currentScheme, storedLineup ?? [], sortedPlayers),
+    () => buildStartingXI(currentScheme, storedLineup, sortedPlayers),
     [currentScheme, storedLineup, sortedPlayers]
   );
 
-  // Persist auto-filled slots so the match logger sees the same XI
+  // Persist auto-filled slots so the match logger sees the same XI. Wait for the
+  // saved lineup first, or the auto-fill would overwrite it.
   useEffect(() => {
-    if (players.length === 0) return;
+    if (lineupLoading || loading || players.length === 0) return;
     const ids = startingXI.map((p) => p?.id ?? null);
-    const stored = storedLineup ?? [];
-    if (ids.some((id, idx) => id !== (stored[idx] ?? null))) setLineup(seasonId, ids);
-  }, [players.length, startingXI, storedLineup, seasonId, setLineup]);
+    if (ids.some((id, idx) => id !== (storedLineup[idx] ?? null))) setLineup(ids);
+  }, [lineupLoading, loading, players.length, startingXI, storedLineup, setLineup]);
 
   const benchPlayers = useMemo(() => {
     const startingIds = new Set(startingXI.flatMap((p) => (p ? [p.id] : [])));
@@ -65,17 +69,17 @@ export default function Tactics() {
   }, [selectedSlotIndex]);
 
   const handleFormationChange = (scheme: FormationScheme) => {
-    setFormation(seasonId, scheme);
+    setScheme(scheme);
     setSelectedSlotIndex(null);
   };
 
   const handleBestXI = () => {
-    setLineup(seasonId, buildBestXI(currentScheme, sortedPlayers));
+    setLineup(buildBestXI(currentScheme, sortedPlayers));
     setSelectedSlotIndex(null);
   };
 
   const putOnPitch = (slotIndex: number, benchPlayerId: string) => {
-    setPitchSlot(seasonId, slotIndex, benchPlayerId);
+    setSlot(slotIndex, benchPlayerId);
     setSelectedSlotIndex(null);
   };
 
@@ -119,7 +123,7 @@ export default function Tactics() {
 
       <div className="grid items-start gap-5 lg:grid-cols-12">
         <div className="lg:col-span-7">
-          {loading ? (
+          {loading || lineupLoading ? (
             <div className="skeleton mx-auto aspect-[7/10] w-full max-w-[560px] rounded-3xl sm:aspect-[4/5]" />
           ) : (
             <PitchBoard
@@ -127,7 +131,7 @@ export default function Tactics() {
               startingXI={startingXI}
               selectedSlotIndex={selectedSlotIndex}
               onSelectSlot={setSelectedSlotIndex}
-              onSwapSlots={(a, b) => swapPitchSlots(seasonId, a, b)}
+              onSwapSlots={swapSlots}
               onDropBenchPlayer={putOnPitch}
             />
           )}

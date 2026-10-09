@@ -11,7 +11,6 @@ import { Check, ChevronLeft, ChevronRight, Footprints, Loader2, ShieldCheck, Tra
 import { clsx } from 'clsx';
 import type { MatchWithDetails, PlayerWithStats } from '../../types/database';
 import { COMPETITIONS, sortPlayersByPosition } from '../../lib/constants';
-import { useTacticsStore } from '../../store/useTacticsStore';
 import Sheet from '../ui/Sheet';
 import Field from '../ui/Field';
 import InlineAlert from '../ui/InlineAlert';
@@ -46,7 +45,8 @@ interface MatchLoggerSheetProps {
   /** Match being edited, or null to log a new one */
   match: MatchWithDetails | null;
   players: PlayerWithStats[];
-  seasonId: string;
+  /** Starting XI saved in Tácticas for this season (null for empty slots) */
+  lineupIds: (string | null)[];
   teamName: string;
   saveError: string | null;
   onClose: () => void;
@@ -66,7 +66,7 @@ export default function MatchLoggerSheet(props: MatchLoggerSheetProps) {
 function MatchLogger({
   match,
   players,
-  seasonId,
+  lineupIds,
   teamName,
   saveError,
   onClose,
@@ -89,8 +89,7 @@ function MatchLogger({
 
   const [events, setEvents] = useState<MatchEvents>(() => {
     // Starters come from the lineup saved in Tácticas for this season
-    const lineup = useTacticsStore.getState().lineups[seasonId] ?? [];
-    const starterIds = new Set(lineup.filter((id): id is string => id !== null));
+    const starterIds = new Set(lineupIds.filter((id): id is string => id !== null));
     if (match) return buildEditMatchEvents(players, match, starterIds);
     // No lineup yet: take the first eleven by position as a starting point
     if (starterIds.size === 0) sortedPlayers.slice(0, 11).forEach((p) => starterIds.add(p.id));

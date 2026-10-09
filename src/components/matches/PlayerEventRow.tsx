@@ -14,6 +14,7 @@ import { BallIcon, CardIcon, GloveIcon } from '../icons/FootballIcons';
 import NumberStepper from '../ui/NumberStepper';
 import Switch from '../ui/Switch';
 import PositionBadge from '../player/PositionBadge';
+import PlayerPicker from '../player/PlayerPicker';
 import type { PlayerMatchPerformance } from './matchEvents';
 
 interface PlayerEventRowProps {
@@ -153,22 +154,19 @@ export default function PlayerEventRow({
           </div>
 
           {event.is_starter && substituteOptions && onSubstitute && (
-            <label className="mt-3 flex items-center gap-2">
-              <ArrowDown size={16} className="flex-shrink-0 text-red-400" aria-hidden="true" />
-              <span className="flex-shrink-0 text-xs font-medium text-white/60">Sustituido por</span>
-              <select
+            <div className="mt-3 flex flex-col gap-1.5">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-white/60">
+                <ArrowDown size={14} className="text-red-400" aria-hidden="true" />
+                Sustituido por
+              </span>
+              <PlayerPicker
+                label={`Sustituto de ${player.full_name}`}
+                emptyLabel="Jugó todo el partido"
                 value={event.replaced_player_id ?? ''}
-                onChange={(e) => onSubstitute(e.target.value)}
-                className="min-w-0 flex-1"
-              >
-                <option value="">Jugó todo el partido</option>
-                {substituteOptions.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.full_name} ({sub.preferred_position})
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={onSubstitute}
+                groups={[{ label: 'Suplentes disponibles', players: substituteOptions }]}
+              />
+            </div>
           )}
         </div>
       )}

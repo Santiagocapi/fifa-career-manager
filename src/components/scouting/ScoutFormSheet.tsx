@@ -4,7 +4,7 @@
 // someone from your squad to pre-fill their details.
 // ============================================================
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Loader2, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -14,6 +14,7 @@ import Sheet from '../ui/Sheet';
 import Field from '../ui/Field';
 import Flag from '../player/Flag';
 import PositionPicker from '../player/PositionPicker';
+import PlayerPicker from '../player/PlayerPicker';
 
 export interface ScoutFormData {
   list_type: ScoutingListType;
@@ -57,8 +58,12 @@ export default function ScoutFormSheet({ open, defaultList, squad, clubName, onC
     formState: { errors, isSubmitting },
   } = useForm<ScoutFormData>({ defaultValues: blankForm(defaultList) });
 
+  const [sellPlayerId, setSellPlayerId] = useState('');
+
   useEffect(() => {
-    if (open) reset(blankForm(defaultList));
+    if (!open) return;
+    reset(blankForm(defaultList));
+    setSellPlayerId('');
   }, [open, defaultList, reset]);
 
   const listType = watch('list_type');
@@ -128,18 +133,20 @@ export default function ScoutFormSheet({ open, defaultList, squad, clubName, onC
         />
 
         {listType === 'sell' && squad.length > 0 && (
-          <Field label="Jugador de tu plantilla" hint="Rellena sus datos automáticamente.">
-            <select defaultValue="" onChange={(e) => fillFromSquad(e.target.value)}>
-              <option value="" disabled>
-                Elige un jugador…
-              </option>
-              {squad.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name} ({p.preferred_position}) · {p.stats?.ovr_end ?? p.stats?.ovr_start ?? '–'}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <div className="field">
+            <span className="field-label">Jugador de tu plantilla</span>
+            <PlayerPicker
+              label="Jugador a vender"
+              emptyLabel="Elige un jugador…"
+              value={sellPlayerId}
+              onChange={(id) => {
+                setSellPlayerId(id);
+                fillFromSquad(id);
+              }}
+              groups={[{ players: squad }]}
+            />
+            <span className="field-hint">Rellena sus datos automáticamente.</span>
+          </div>
         )}
 
         <Field label="Nombre" required error={errors.full_name?.message}>

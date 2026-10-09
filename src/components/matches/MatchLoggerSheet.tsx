@@ -48,7 +48,6 @@ interface MatchLoggerSheetProps {
   players: PlayerWithStats[];
   seasonId: string;
   teamName: string;
-  knownOpponents: string[];
   saveError: string | null;
   onClose: () => void;
   onSave: (payload: MatchFormPayload) => Promise<boolean>;
@@ -69,7 +68,6 @@ function MatchLogger({
   players,
   seasonId,
   teamName,
-  knownOpponents,
   saveError,
   onClose,
   onSave,
@@ -262,7 +260,6 @@ function MatchLogger({
             <Field label="Rival" required error={opponentError ?? undefined}>
               <input
                 ref={opponentRef}
-                list="known-opponents"
                 value={opponent}
                 onChange={(e) => {
                   setOpponent(e.target.value);
@@ -274,11 +271,6 @@ function MatchLogger({
                 enterKeyHint="done"
                 aria-invalid={opponentError ? true : undefined}
               />
-              <datalist id="known-opponents">
-                {knownOpponents.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
             </Field>
 
             <div role="radiogroup" aria-label="Competición" className="field">

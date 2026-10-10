@@ -5,12 +5,14 @@
 // ============================================================
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ChevronRight, LogOut, type LucideIcon } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeftRight, ChevronRight, LogOut, Trash2, type LucideIcon } from 'lucide-react';
 import { clsx } from 'clsx';
 import Sheet from '../ui/Sheet';
 import { NAV_ITEMS } from './navItems';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuth } from '../../hooks/useAuth';
+import DeleteAccountSheet from './DeleteAccountSheet';
 
 interface MoreSheetProps {
   open: boolean;
@@ -21,6 +23,7 @@ export default function MoreSheet({ open, onClose }: MoreSheetProps) {
   const navigate = useNavigate();
   const { activeCareer, reset } = useAppStore();
   const { signOut } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const go = (to: string) => {
     onClose();
@@ -58,7 +61,16 @@ export default function MoreSheet({ open, onClose }: MoreSheetProps) {
           onClick={() => go('/careers')}
         />
         <MenuRow icon={LogOut} label="Cerrar sesión" tone="danger" onClick={handleSignOut} />
+        <MenuRow
+          icon={Trash2}
+          label="Eliminar mi cuenta"
+          description="Borra tu cuenta y todos tus datos"
+          tone="danger"
+          onClick={() => setDeleteOpen(true)}
+        />
       </div>
+
+      <DeleteAccountSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </Sheet>
   );
 }

@@ -23,6 +23,7 @@ import AppLayout from './components/layout/AppLayout';
 import ConfirmProvider from './components/ui/ConfirmProvider';
 import AppLogo from './components/ui/AppLogo';
 import AuthPage from './pages/Auth';
+import ResetPasswordPage from './pages/ResetPassword';
 
 const CareerSelect = lazy(() => import('./pages/CareerSelect'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -62,6 +63,7 @@ export default function App() {
         <Routes>
           {/* Public route: auth page */}
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/reset" element={<ResetPasswordPage />} />
 
           {/* Protected routes: wrapped in ProtectedRoute + AppLayout */}
           <Route path="/" element={

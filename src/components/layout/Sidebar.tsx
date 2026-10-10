@@ -4,8 +4,9 @@
 // sign out and collapse toggle.
 // ============================================================
 
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ArrowLeftRight, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,11 +14,13 @@ import { NAV_ITEMS } from './navItems';
 import { getGameVersionShort } from '../../lib/gameVersions';
 import AppLogo from '../ui/AppLogo';
 import ClubCrest from '../ui/ClubCrest';
+import DeleteAccountSheet from './DeleteAccountSheet';
 
 export default function Sidebar() {
   const { sidebarCollapsed: collapsed, toggleSidebar, activeCareer, activeSeason, reset } = useAppStore();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -127,6 +130,19 @@ export default function Sidebar() {
         </button>
         <button
           type="button"
+          onClick={() => setDeleteOpen(true)}
+          aria-label={collapsed ? 'Eliminar mi cuenta' : undefined}
+          className={clsx(
+            'group relative flex h-11 items-center gap-3 rounded-xl text-sm font-semibold text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-300',
+            collapsed ? 'justify-center' : 'px-3'
+          )}
+        >
+          <Trash2 size={20} />
+          {!collapsed && 'Eliminar mi cuenta'}
+          {collapsed && <Tooltip label="Eliminar mi cuenta" />}
+        </button>
+        <button
+          type="button"
           onClick={toggleSidebar}
           aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
           aria-expanded={!collapsed}
@@ -140,6 +156,8 @@ export default function Sidebar() {
           {collapsed && <Tooltip label="Expandir menú" />}
         </button>
       </div>
+
+      <DeleteAccountSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} />
     </aside>
   );
 }

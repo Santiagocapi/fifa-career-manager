@@ -31,6 +31,8 @@ interface AuthActions {
   resendConfirmation: (email: string) => Promise<AuthResult>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   updatePassword: (password: string) => Promise<AuthResult>;
+  /** Deletes the signed-in account and all its data. The email must match the account. */
+  deleteAccount: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 }
 
@@ -101,6 +103,14 @@ export const useAuth = (): AuthState & AuthActions => {
     return { error: error?.message ?? null };
   };
 
+  const deleteAccount = async (email: string): Promise<AuthResult> => {
+    const { error } = await supabase.rpc('delete_my_account', { p_email: email });
+    if (error) return { error: error.message };
+    // The user no longer exists: clear the local session without calling the server
+    await supabase.auth.signOut({ scope: 'local' });
+    return { error: null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -114,6 +124,7 @@ export const useAuth = (): AuthState & AuthActions => {
     resendConfirmation,
     requestPasswordReset,
     updatePassword,
+    deleteAccount,
     signOut,
   };
 };

@@ -10,6 +10,7 @@ const AUTH_ERRORS: [RegExp, string][] = [
   [/^User already registered/i, 'Ya existe una cuenta con ese email.'],
   [/^Password should be at least/i, 'La contraseña debe tener al menos 8 caracteres.'],
   [/^New password should be different/i, 'La nueva contraseña debe ser distinta de la anterior.'],
+  [/email does not match/i, 'El email no coincide con el de tu cuenta.'],
   [/error sending .*email/i, 'No pudimos enviar el correo. Inténtalo de nuevo en unos minutos.'],
   [/rate limit/i, 'Se enviaron demasiados correos. Espera unos minutos e inténtalo de nuevo.'],
   [/you can only request this after/i, 'Por seguridad, espera unos segundos antes de volver a intentarlo.'],

@@ -35,7 +35,8 @@ export default function History() {
   const readOnly = viewingSeason?.is_closed ?? false;
 
   const { trophies, error: trophiesError, addTrophy, deleteTrophy } = useTrophies(viewingSeasonId);
-  const { players: seasonPlayers } = usePlayers(activeCareer?.id ?? null, viewingSeasonId);
+  // Past seasons keep showing the players who have left since
+  const { players: seasonPlayers } = usePlayers(activeCareer?.id ?? null, viewingSeasonId, { includeFormer: true });
   const { matches: seasonMatches, loading: matchesLoading } = useMatches(viewingSeasonId);
 
   const handleAddTrophy = async (data: TrophyFormData) => {

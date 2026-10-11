@@ -8,23 +8,15 @@ import { useState } from 'react';
 import { CalendarPlus, Loader2 } from 'lucide-react';
 import type { Season } from '../../types/database';
 import Field from '../ui/Field';
+import { suggestNextSeasonLabel } from '../season/seasonLabel';
 
 interface NewSeasonCardProps {
   seasons: Season[];
   onCreate: (yearLabel: string) => Promise<unknown>;
 }
 
-// "2024/2025" → "2025/2026"; falls back to the current calendar year
-const suggestNextLabel = (seasons: Season[]): string => {
-  const last = seasons[seasons.length - 1]?.year_label ?? '';
-  const match = last.match(/(\d{4})\D+(\d{4})/);
-  if (match) return `${Number(match[1]) + 1}/${Number(match[2]) + 1}`;
-  const year = new Date().getFullYear();
-  return `${year}/${year + 1}`;
-};
-
 export default function NewSeasonCard({ seasons, onCreate }: NewSeasonCardProps) {
-  const [yearLabel, setYearLabel] = useState(() => suggestNextLabel(seasons));
+  const [yearLabel, setYearLabel] = useState(() => suggestNextSeasonLabel(seasons));
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {

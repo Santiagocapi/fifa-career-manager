@@ -1,6 +1,8 @@
 // ============================================================
 // src/hooks/useSeasons.ts
-// Season management: create, activate, close seasons.
+// Season management: create a career's first season, and close
+// a season, which atomically starts the next one (close_season,
+// migration 008).
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,12 +10,23 @@ import { supabase } from '../lib/supabase';
 import type { Season } from '../types/database';
 import { useAppStore } from '../store/useAppStore';
 
+/** End-of-season snapshot of one player, sent to close_season */
+export interface ClosingPlayer {
+  player_id: string;
+  ovr_end: number | null;
+  /** In cents */
+  market_value_end: number | null;
+  /** The player does not continue at the club next season */
+  leaves: boolean;
+}
+
 interface UseSeasonsReturn {
   seasons: Season[];
   loading: boolean;
   error: string | null;
   createSeason: (yearLabel: string) => Promise<Season | null>;
-  closeSeason: (seasonId: string) => Promise<void>;
+  /** Returns the new season, or null if it failed (see `error`) */
+  closeSeason: (seasonId: string, nextYearLabel: string, players: ClosingPlayer[]) => Promise<Season | null>;
   refetch: () => void;
 }
 
@@ -75,18 +88,33 @@ export const useSeasons = (careerId: string | null): UseSeasonsReturn => {
     return data;
   };
 
-  const closeSeason = async (seasonId: string) => {
-    const { error: err } = await supabase
+  const closeSeason = async (
+    seasonId: string,
+    nextYearLabel: string,
+    players: ClosingPlayer[]
+  ): Promise<Season | null> => {
+    if (!careerId) return null;
+    setError(null);
+    const { data: nextSeasonId, error: err } = await supabase.rpc('close_season', {
+      p_season_id: seasonId,
+      p_next_year_label: nextYearLabel,
+      p_players: players,
+    });
+
+    if (err) { setError(err.message); return null; }
+
+    const { data, error: fetchErr } = await supabase
       .from('seasons')
-      .update({ is_closed: true, is_active: false })
-      .eq('id', seasonId);
+      .select('*')
+      .eq('career_id', careerId)
+      .order('season_number', { ascending: true });
 
-    if (err) { setError(err.message); return; }
+    if (fetchErr) { setError(fetchErr.message); return null; }
 
-    setSeasons(prev => prev.map(s =>
-      s.id === seasonId ? { ...s, is_closed: true, is_active: false } : s
-    ));
-    setActiveSeason(null);
+    const nextSeason = data?.find(s => s.id === nextSeasonId) ?? null;
+    setSeasons(data ?? []);
+    setActiveSeason(nextSeason);
+    return nextSeason;
   };
 
   return { seasons, loading, error, createSeason, closeSeason, refetch: fetchSeasons };

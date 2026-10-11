@@ -1,9 +1,11 @@
 // ============================================================
 // src/pages/Dashboard.tsx
 // Career home: season balance, squad numbers, season leaders,
-// latest results and a shortcut to log the next match.
+// latest results, a shortcut to log the next match and the
+// close-season assistant.
 // ============================================================
 
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Plus, Swords } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -20,19 +22,40 @@ import SeasonRecord from '../components/matches/SeasonRecord';
 import MatchListItem from '../components/matches/MatchListItem';
 import LeadersCard from '../components/dashboard/LeadersCard';
 import NewSeasonCard from '../components/dashboard/NewSeasonCard';
+import SeasonsCard from '../components/dashboard/SeasonsCard';
+import InlineAlert from '../components/ui/InlineAlert';
+import CloseSeasonSheet from '../components/season/CloseSeasonSheet';
+import type { ClosingPlayer } from '../hooks/useSeasons';
 
 export default function Dashboard() {
   const { activeCareer, activeSeason } = useAppStore();
   const { players, loading: playersLoading } = usePlayers(activeCareer?.id ?? null, activeSeason?.id ?? null);
-  const { seasons, createSeason, loading: seasonsLoading } = useSeasons(activeCareer?.id ?? null);
+  const {
+    seasons,
+    createSeason,
+    closeSeason,
+    loading: seasonsLoading,
+    error: seasonsError,
+  } = useSeasons(activeCareer?.id ?? null);
   const { trophies } = useTrophies(activeSeason?.id ?? null);
   const { matches, loading: matchesLoading } = useMatches(activeSeason?.id ?? null);
   const navigate = useNavigate();
+  const [closeOpen, setCloseOpen] = useState(false);
+  // Shown after closing: "<closed> cerrada, empieza <next>"
+  const [closedNotice, setClosedNotice] = useState<{ closed: string; next: string } | null>(null);
 
   if (!activeCareer) return null; // AppLayout shows the "pick a career" state
 
   const canLogMatch = !!activeSeason && !activeSeason.is_closed;
   const injuredCount = players.filter((p) => p.stats?.is_injured).length;
+  const handleCloseSeason = async (nextYearLabel: string, closingPlayers: ClosingPlayer[]) => {
+    if (!activeSeason) return false;
+    const closed = activeSeason.year_label;
+    const nextSeason = await closeSeason(activeSeason.id, nextYearLabel, closingPlayers);
+    if (!nextSeason) return false;
+    setClosedNotice({ closed, next: nextSeason.year_label });
+    return true;
+  };
   const squadValue = players.reduce(
     (sum, p) => sum + (p.stats?.market_value_end ?? p.stats?.market_value_start ?? 0),
     0
@@ -71,6 +94,12 @@ export default function Dashboard() {
             : undefined
         }
       />
+
+      {closedNotice && (
+        <InlineAlert tone="success">
+          Temporada {closedNotice.closed} cerrada. Ya puedes registrar los partidos de {closedNotice.next}.
+        </InlineAlert>
+      )}
 
       {!activeSeason && !seasonsLoading && <NewSeasonCard seasons={seasons} onCreate={createSeason} />}
 
@@ -144,41 +173,29 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Seasons */}
       {seasons.length > 0 && (
-        <section className="card p-4 sm:p-5" aria-labelledby="seasons-title">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="seasons-title" className="section-title">
-              Temporadas
-            </h2>
-            <Link to="/history" className="flex items-center gap-0.5 text-xs font-semibold text-neon-400">
-              Ver historial <ChevronRight size={14} />
-            </Link>
-          </div>
-          <ul className="mt-1 divide-y divide-pitch-700/70">
-            {seasons
-              .slice()
-              .reverse()
-              .map((season) => (
-                <li key={season.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="text-sm text-white">
-                    <span className="font-semibold">Temporada {season.season_number}</span>
-                    <span className="text-white/50"> · {season.year_label}</span>
-                  </span>
-                  <span
-                    className={clsx(
-                      'badge',
-                      season.is_closed
-                        ? 'border-white/10 bg-white/5 text-white/50'
-                        : 'border-neon-400/30 bg-neon-400/10 text-neon-300'
-                    )}
-                  >
-                    {season.is_closed ? 'Cerrada' : 'En curso'}
-                  </span>
-                </li>
-              ))}
-          </ul>
-        </section>
+        <SeasonsCard
+          seasons={seasons}
+          closableSeason={canLogMatch ? activeSeason : null}
+          closeDisabled={playersLoading || matchesLoading}
+          onCloseSeason={() => {
+            setClosedNotice(null);
+            setCloseOpen(true);
+          }}
+        />
+      )}
+
+      {activeSeason && (
+        <CloseSeasonSheet
+          open={closeOpen}
+          season={activeSeason}
+          seasons={seasons}
+          players={players}
+          matches={matches}
+          saveError={seasonsError}
+          onClose={() => setCloseOpen(false)}
+          onConfirm={handleCloseSeason}
+        />
       )}
     </div>
   );

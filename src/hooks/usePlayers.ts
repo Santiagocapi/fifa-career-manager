@@ -30,13 +30,24 @@ interface UsePlayersReturn {
   addPlayer: (playerData: CreatePlayerDto, statsData: Partial<CreateSeasonStatsDto>) => Promise<Player | null>;
   updatePlayer: (id: string, data: Partial<Player>) => Promise<void>;
   updateStats: (playerId: string, seasonId: string, data: Partial<SeasonStats>) => Promise<void>;
-  closeSeasonForPlayer: (playerId: string, seasonId: string, ovrEnd: number, valueEnd: number) => Promise<void>;
   toggleInjured: (playerId: string, isInjured: boolean) => Promise<void>;
   deactivatePlayer: (id: string) => Promise<void>;
   refetch: () => void;
 }
 
-export const usePlayers = (careerId: string | null, seasonId: string | null): UsePlayersReturn => {
+interface UsePlayersOptions {
+  /**
+   * Also return players who have left the club but have a stats row in
+   * this season, so past seasons show the squad they actually had.
+   */
+  includeFormer?: boolean;
+}
+
+export const usePlayers = (
+  careerId: string | null,
+  seasonId: string | null,
+  { includeFormer = false }: UsePlayersOptions = {}
+): UsePlayersReturn => {
   const [players, setPlayers] = useState<PlayerWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,13 +62,13 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     setLoading(true);
     setError(null);
 
-    // Fetch all active players for this career
-    const { data: playersData, error: playersErr } = await supabase
+    // Active players of the career (plus former ones when asked for)
+    let playersQuery = supabase
       .from('players')
       .select('*')
-      .eq('career_id', careerId)
-      .eq('is_active', true)
-      .order('preferred_position');
+      .eq('career_id', careerId);
+    if (!includeFormer) playersQuery = playersQuery.eq('is_active', true);
+    const { data: playersData, error: playersErr } = await playersQuery.order('preferred_position');
 
     if (playersErr) {
       setError(playersErr.message);
@@ -88,15 +99,18 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
       }
     }
 
-    // Merge: attach stats to each player
-    const enriched: PlayerWithStats[] = playersData.map(player => ({
-      ...player,
-      stats: statsMap[player.id] ?? null,
-    }));
+    // Merge: attach stats to each player. Former players only count for
+    // the seasons they have stats in.
+    const enriched: PlayerWithStats[] = playersData
+      .filter(player => player.is_active || statsMap[player.id])
+      .map(player => ({
+        ...player,
+        stats: statsMap[player.id] ?? null,
+      }));
 
     setPlayers(enriched);
     setLoading(false);
-  }, [careerId, seasonId]);
+  }, [careerId, seasonId, includeFormer]);
 
   useEffect(() => {
     fetchPlayers();
@@ -173,19 +187,6 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     ));
   };
 
-  // Called when closing a season: save final OVR and market value
-  const closeSeasonForPlayer = async (
-    playerId: string,
-    seasonId: string,
-    ovrEnd: number,
-    valueEnd: number
-  ) => {
-    await updateStats(playerId, seasonId, {
-      ovr_end: ovrEnd,
-      market_value_end: dollarsToCents(valueEnd),
-    });
-  };
-
   const deactivatePlayer = async (id: string) => {
     await updatePlayer(id, { is_active: false });
     setPlayers(prev => prev.filter(p => p.id !== id));
@@ -215,7 +216,6 @@ export const usePlayers = (careerId: string | null, seasonId: string | null): Us
     addPlayer,
     updatePlayer,
     updateStats,
-    closeSeasonForPlayer,
     toggleInjured,
     deactivatePlayer,
     refetch: fetchPlayers,

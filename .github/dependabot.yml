@@ -7,6 +7,11 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    # Major bumps (React 19, Tailwind 4, TypeScript 7...) need a planned
+    # migration, so they are done by hand instead of arriving as PRs.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -17,3 +22,8 @@ updates:
       interval: monthly
     commit-message:
       prefix: "chore(ci)"
+    # Actions only publish major tags (v4, v5...), so majors stay enabled
+    # but arrive together in a single PR.
+    groups:
+      github-actions:
+        patterns: ["*"]

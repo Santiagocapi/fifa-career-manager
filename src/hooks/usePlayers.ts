@@ -35,6 +35,28 @@ interface UsePlayersReturn {
   refetch: () => void;
 }
 
+// Row updates shared with usePlayerProfile. They return the error message, or null.
+export const updatePlayerRow = async (id: string, data: Partial<Player>): Promise<string | null> => {
+  const { error } = await supabase
+    .from('players')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  return error?.message ?? null;
+};
+
+export const updateSeasonStatsRow = async (
+  playerId: string,
+  seasonId: string,
+  data: Partial<SeasonStats>
+): Promise<string | null> => {
+  const { error } = await supabase
+    .from('season_stats')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('player_id', playerId)
+    .eq('season_id', seasonId);
+  return error?.message ?? null;
+};
+
 interface UsePlayersOptions {
   /**
    * Also return players who have left the club but have a stats row in
@@ -163,23 +185,14 @@ export const usePlayers = (
   };
 
   const updatePlayer = async (id: string, data: Partial<Player>) => {
-    const { error: err } = await supabase
-      .from('players')
-      .update({ ...data, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (err) setError(err.message);
+    const err = await updatePlayerRow(id, data);
+    if (err) setError(err);
     else setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
   };
 
   const updateStats = async (playerId: string, seasonId: string, data: Partial<SeasonStats>) => {
-    const { error: err } = await supabase
-      .from('season_stats')
-      .update({ ...data, updated_at: new Date().toISOString() })
-      .eq('player_id', playerId)
-      .eq('season_id', seasonId);
-
-    if (err) setError(err.message);
+    const err = await updateSeasonStatsRow(playerId, seasonId, data);
+    if (err) setError(err);
     else setPlayers(prev => prev.map(p =>
       p.id === playerId
         ? { ...p, stats: p.stats ? { ...p.stats, ...data } : null }
@@ -195,13 +208,8 @@ export const usePlayers = (
   // Toggle the persistent injury status for a player in the active season
   const toggleInjured = async (playerId: string, isInjured: boolean) => {
     if (!seasonId) return;
-    const { error: err } = await supabase
-      .from('season_stats')
-      .update({ is_injured: isInjured, updated_at: new Date().toISOString() })
-      .eq('player_id', playerId)
-      .eq('season_id', seasonId);
-
-    if (err) setError(err.message);
+    const err = await updateSeasonStatsRow(playerId, seasonId, { is_injured: isInjured });
+    if (err) setError(err);
     else setPlayers(prev => prev.map(p =>
       p.id === playerId && p.stats
         ? { ...p, stats: { ...p.stats, is_injured: isInjured } }

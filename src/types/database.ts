@@ -202,6 +202,16 @@ export interface MatchWithDetails extends Match {
   events: (MatchEvent & { player: Player })[];
 }
 
+// One season of a player's career, with the season it belongs to
+export interface PlayerSeasonStats extends SeasonStats {
+  season: Season;
+}
+
+// One appearance (or squad call-up) of a player, with its match
+export interface PlayerMatchEvent extends MatchEvent {
+  match: Match;
+}
+
 // A season with its list of trophies
 export interface SeasonWithTrophies extends Season {
   trophies: Trophy[];

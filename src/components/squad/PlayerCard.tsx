@@ -1,9 +1,10 @@
 // ============================================================
 // src/components/squad/PlayerCard.tsx
-// Squad card. The whole card is a button that opens the editor.
+// Squad card. The whole card opens the player profile; the pencil
+// keeps quick editing (e.g. marking an injury) one tap away.
 // ============================================================
 
-import { Cross, TrendingDown, TrendingUp } from 'lucide-react';
+import { Cross, Pencil, TrendingDown, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { PlayerWithStats } from '../../types/database';
 import { formatValue, formatWage } from '../../lib/constants';
@@ -14,10 +15,11 @@ import Flag from '../player/Flag';
 
 interface PlayerCardProps {
   player: PlayerWithStats;
+  onOpen: (player: PlayerWithStats) => void;
   onEdit: (player: PlayerWithStats) => void;
 }
 
-export default function PlayerCard({ player, onEdit }: PlayerCardProps) {
+export default function PlayerCard({ player, onOpen, onEdit }: PlayerCardProps) {
   const { stats } = player;
   const currentOvr = stats ? stats.ovr_end ?? stats.ovr_start : null;
   const growth = stats?.ovr_start != null && currentOvr != null ? currentOvr - stats.ovr_start : 0;
@@ -26,11 +28,11 @@ export default function PlayerCard({ player, onEdit }: PlayerCardProps) {
 
   return (
     <article className={clsx('card-interactive relative flex flex-col gap-3 p-3.5', injured && 'border-red-500/30')}>
-      {/* The whole card opens the editor */}
+      {/* The whole card opens the profile */}
       <button
         type="button"
-        onClick={() => onEdit(player)}
-        aria-label={`Editar a ${player.full_name}`}
+        onClick={() => onOpen(player)}
+        aria-label={`Ver ficha de ${player.full_name}`}
         className="absolute inset-0 rounded-2xl"
       />
 
@@ -55,6 +57,16 @@ export default function PlayerCard({ player, onEdit }: PlayerCardProps) {
             {player.joined_year && <span className="text-white/40">· desde {player.joined_year}</span>}
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => onEdit(player)}
+          aria-label={`Editar a ${player.full_name}`}
+          title="Editar"
+          className="icon-btn pointer-events-auto relative z-10 -mx-1.5 -my-1 h-11 w-9 hover:bg-white/5 hover:text-white"
+        >
+          <Pencil size={16} />
+        </button>
 
         <div className="flex flex-shrink-0 flex-col items-center gap-0.5">
           <OvrBadge ovr={currentOvr} />

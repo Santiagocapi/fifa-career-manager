@@ -4,6 +4,7 @@
 // value. The player column stays pinned while scrolling sideways.
 // ============================================================
 
+import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 import type { PlayerWithStats } from '../../types/database';
 import { formatValue, sortPlayersByPosition } from '../../lib/constants';
@@ -40,9 +41,9 @@ export default function SeasonRosterTable({ players }: { players: PlayerWithStat
                   <th scope="row" className="sticky left-0 z-10 bg-pitch-800 px-3 py-2 text-left font-medium">
                     <span className="flex max-w-[11rem] items-center gap-2 sm:max-w-none">
                       <PositionBadge position={player.preferred_position} />
-                      <span className="truncate text-white" translate="no">
+                      <Link to={`/squad/${player.id}`} className="truncate py-1 text-white hover:underline" translate="no">
                         {player.full_name}
-                      </span>
+                      </Link>
                     </span>
                   </th>
                   <td className="px-2 py-2 text-center">

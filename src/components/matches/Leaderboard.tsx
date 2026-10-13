@@ -7,6 +7,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { Cross, Footprints } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 import type { PlayerWithStats, SeasonStats } from '../../types/database';
 import { sortPlayersByPosition } from '../../lib/constants';
@@ -88,9 +89,13 @@ export default function Leaderboard({ players, onToggleInjured }: LeaderboardPro
                   <th scope="row" className="sticky left-0 z-10 bg-pitch-800 px-3 py-2 text-left font-medium">
                     <span className="flex max-w-[11rem] items-center gap-2 sm:max-w-none">
                       <PositionBadge position={player.preferred_position} />
-                      <span className={clsx('truncate', injured ? 'text-white/50' : 'text-white')} translate="no">
+                      <Link
+                        to={`/squad/${player.id}`}
+                        className={clsx('truncate py-1 hover:underline', injured ? 'text-white/50' : 'text-white')}
+                        translate="no"
+                      >
                         {player.full_name}
-                      </span>
+                      </Link>
                     </span>
                   </th>
                   {COLUMNS.map((column) => {

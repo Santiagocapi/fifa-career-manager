@@ -6,6 +6,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { Footprints, ShieldHalf, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 import type { MatchWithDetails, PlayerWithStats } from '../../types/database';
 import { BallIcon } from '../icons/FootballIcons';
@@ -100,16 +101,20 @@ interface LeaderRowProps {
 
 function LeaderRow({ icon, iconClass, label, player, value, empty }: LeaderRowProps) {
   return (
-    <li className="flex items-center gap-3 py-2.5">
+    <li className="relative flex items-center gap-3 py-2.5">
       <span className={clsx('flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl', iconClass)}>{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-2xs font-semibold uppercase tracking-wide text-white/45">{label}</p>
         {player ? (
           <p className="flex min-w-0 items-center gap-2">
             <PlayerAvatar name={player.full_name} size="xs" />
-            <span className="truncate text-sm font-semibold text-white" translate="no">
+            <Link
+              to={`/squad/${player.id}`}
+              className="truncate text-sm font-semibold text-white after:absolute after:inset-0 after:content-[''] hover:underline"
+              translate="no"
+            >
               {player.full_name}
-            </span>
+            </Link>
           </p>
         ) : (
           <p className="text-sm text-white/40">{empty}</p>

@@ -301,6 +301,7 @@ function CloseSeasonForm({ season, seasons, players, matches, saveError, onClose
                   Empezará {nextLabel.trim() || 'la siguiente temporada'} con los {staying} jugadores que siguen, su media y
                   su valor finales.
                 </li>
+                <li>Los jugadores que siguen cumplen un año más.</li>
                 <li>Tu once titular y tu formación pasan a la nueva temporada.</li>
               </ul>
             </InlineAlert>

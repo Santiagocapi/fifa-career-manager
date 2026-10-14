@@ -163,7 +163,7 @@ export default function Dashboard() {
                 <ul className="mt-1 divide-y divide-pitch-700/70">
                   {matches.slice(0, 5).map((match) => (
                     <li key={match.id}>
-                      <MatchListItem match={match} compact />
+                      <MatchListItem match={match} to={`/stats/${match.id}`} compact />
                     </li>
                   ))}
                 </ul>

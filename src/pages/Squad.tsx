@@ -1,10 +1,11 @@
 // ============================================================
 // src/pages/Squad.tsx
-// Squad management: search, filter and sort players, and add or
-// edit them from a bottom sheet.
+// Squad management: search, filter and sort players, open their
+// profile, and add or quick-edit them from a bottom sheet.
 // ============================================================
 
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, SearchX, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAppStore } from '../store/useAppStore';
@@ -14,7 +15,6 @@ import {
   POSITION_COLORS,
   getPositionGroup,
   sortPlayersByPosition,
-  dollarsToCents,
   type PositionGroup,
 } from '../lib/constants';
 import PageHeader from '../components/ui/PageHeader';
@@ -22,6 +22,7 @@ import EmptyState from '../components/ui/EmptyState';
 import InlineAlert from '../components/ui/InlineAlert';
 import PlayerCard from '../components/squad/PlayerCard';
 import PlayerFormSheet, { type PlayerFormData } from '../components/squad/PlayerFormSheet';
+import { numberOrNull, toPlayerFields, toSeasonStatsFields } from '../components/squad/playerForm';
 import type { CreatePlayerDto, PlayerWithStats } from '../types/database';
 
 type SortKey = 'position' | 'ovr' | 'age' | 'value';
@@ -36,10 +37,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 const currentOvr = (p: PlayerWithStats) => p.stats?.ovr_end ?? p.stats?.ovr_start ?? 0;
 const currentValue = (p: PlayerWithStats) => p.stats?.market_value_end ?? p.stats?.market_value_start ?? 0;
 
-// Empty number inputs come back as NaN from react-hook-form
-const numberOrNull = (value: number) => (Number.isFinite(value) ? value : null);
-
 export default function Squad() {
+  const navigate = useNavigate();
   const { activeCareer, activeSeason } = useAppStore();
   const { players, loading, error, addPlayer, updatePlayer, updateStats } = usePlayers(
     activeCareer?.id ?? null,
@@ -83,25 +82,16 @@ export default function Squad() {
     setSheetOpen(true);
   };
 
+  const openProfile = (player: PlayerWithStats) => navigate(`/squad/${player.id}`);
+
   const handleSubmit = async (data: PlayerFormData) => {
     if (!activeCareer) return;
-    const base = {
-      full_name: data.full_name.trim(),
-      preferred_position: data.preferred_position,
-      nationality: data.nationality.trim() || null,
-      age: numberOrNull(data.age),
-      joined_year: numberOrNull(data.joined_year) ?? new Date().getFullYear(),
-    };
+    const base = toPlayerFields(data);
 
     if (editingPlayer) {
       await updatePlayer(editingPlayer.id, base);
       if (activeSeason && editingPlayer.stats) {
-        await updateStats(editingPlayer.id, activeSeason.id, {
-          ovr_start: numberOrNull(data.ovr_start),
-          market_value_start: dollarsOrNull(data.market_value_start),
-          salary: dollarsOrNull(data.salary),
-          is_injured: data.is_injured,
-        });
+        await updateStats(editingPlayer.id, activeSeason.id, toSeasonStatsFields(data));
       }
     } else {
       const playerDto: CreatePlayerDto = {
@@ -238,7 +228,7 @@ export default function Squad() {
                 </h2>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {groupPlayers.map((player) => (
-                    <PlayerCard key={player.id} player={player} onEdit={openEditSheet} />
+                    <PlayerCard key={player.id} player={player} onOpen={openProfile} onEdit={openEditSheet} />
                   ))}
                 </div>
               </section>
@@ -248,7 +238,7 @@ export default function Squad() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visiblePlayers.map((player) => (
-            <PlayerCard key={player.id} player={player} onEdit={openEditSheet} />
+            <PlayerCard key={player.id} player={player} onOpen={openProfile} onEdit={openEditSheet} />
           ))}
         </div>
       )}
@@ -261,9 +251,4 @@ export default function Squad() {
       />
     </div>
   );
-}
-
-function dollarsOrNull(value: number): number | null {
-  const dollars = numberOrNull(value);
-  return dollars === null ? null : dollarsToCents(dollars);
 }

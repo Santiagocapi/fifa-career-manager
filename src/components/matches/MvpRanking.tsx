@@ -4,6 +4,7 @@
 // ============================================================
 
 import { Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
 import type { MvpRanking as MvpRankingRow } from './matchStats';
 import PlayerAvatar from '../player/PlayerAvatar';
@@ -18,7 +19,7 @@ export default function MvpRanking({ ranking }: { ranking: MvpRankingRow[] }) {
   return (
     <ol className="flex flex-col gap-2">
       {ranking.slice(0, 5).map(({ player, count }, index) => (
-        <li key={player.id} className="flex items-center gap-3 rounded-xl border border-pitch-700 bg-pitch-900/50 px-3 py-2">
+        <li key={player.id} className="relative flex items-center gap-3 rounded-xl border border-pitch-700 bg-pitch-900/50 px-3 py-2 transition-colors hover:bg-pitch-900">
           <span
             className={clsx(
               'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-black tabular-nums',
@@ -29,9 +30,13 @@ export default function MvpRanking({ ranking }: { ranking: MvpRankingRow[] }) {
           </span>
           <PlayerAvatar name={player.full_name} size="sm" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white" translate="no">
+            <Link
+              to={`/squad/${player.id}`}
+              className="block truncate text-sm font-semibold text-white after:absolute after:inset-0 after:rounded-xl after:content-['']"
+              translate="no"
+            >
               {player.full_name}
-            </p>
+            </Link>
             <p className="mt-0.5 flex items-center gap-1.5">
               <PositionBadge position={player.preferred_position} />
               <Flag nationality={player.nationality} />

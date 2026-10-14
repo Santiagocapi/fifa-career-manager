@@ -28,6 +28,7 @@ import ResetPasswordPage from './pages/ResetPassword';
 const CareerSelect = lazy(() => import('./pages/CareerSelect'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Squad = lazy(() => import('./pages/Squad'));
+const PlayerProfile = lazy(() => import('./pages/PlayerProfile'));
 const Tactics = lazy(() => import('./pages/Tactics'));
 const Stats = lazy(() => import('./pages/Stats'));
 const Scouting = lazy(() => import('./pages/Scouting'));
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="careers" element={<CareerSelect />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="squad" element={<Squad />} />
+            <Route path="squad/:playerId" element={<PlayerProfile />} />
             <Route path="tactics" element={<Tactics />} />
             <Route path="stats" element={<Stats />} />
             <Route path="scouting" element={<Scouting />} />

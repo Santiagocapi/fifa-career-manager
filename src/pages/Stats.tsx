@@ -1,8 +1,8 @@
 // ============================================================
 // src/pages/Stats.tsx
 // Matches of the season and their stats: match list (tap to
-// edit), player leaderboard, MVPs, chart and head-to-head.
-// Logging a match happens in MatchLoggerSheet.
+// open the match detail), player leaderboard, MVPs, chart and
+// head-to-head. Logging a match happens in MatchLoggerSheet.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react';
@@ -24,7 +24,6 @@ import MvpRanking from '../components/matches/MvpRanking';
 import GoalsChart from '../components/matches/GoalsChart';
 import H2HTable from '../components/matches/H2HTable';
 import { rankMvps } from '../components/matches/matchStats';
-import type { MatchWithDetails } from '../types/database';
 
 type StatsTab = 'matches' | 'players' | 'rivals';
 
@@ -34,7 +33,7 @@ export default function Stats() {
     activeCareer?.id ?? null,
     activeSeason?.id ?? null
   );
-  const { matches, h2hRecords, loading: matchesLoading, error, logMatch, updateMatch, deleteMatch } = useMatches(
+  const { matches, h2hRecords, loading: matchesLoading, error, logMatch } = useMatches(
     activeSeason?.id ?? null
   );
   const { lineupIds, loading: lineupLoading } = useLineup(activeSeason?.id ?? null);
@@ -43,7 +42,6 @@ export default function Stats() {
 
   const [tab, setTab] = useState<StatsTab>('matches');
   const [loggerOpen, setLoggerOpen] = useState(false);
-  const [editingMatch, setEditingMatch] = useState<MatchWithDetails | null>(null);
 
   // A closed season is read-only
   const readOnly = activeSeason?.is_closed ?? false;
@@ -51,30 +49,21 @@ export default function Stats() {
   const canLog = !!activeSeason && !readOnly && !playersLoading && !lineupLoading;
   const mvpRanking = useMemo(() => rankMvps(matches, players), [matches, players]);
 
-  const openNewMatch = () => {
-    setEditingMatch(null);
-    setLoggerOpen(true);
-  };
+  const openNewMatch = () => setLoggerOpen(true);
 
   // "Registrar partido" from other screens lands here with this flag. It waits
   // for the squad to load, since the logger is pre-filled with the players.
   useEffect(() => {
     const state = location.state as { openLogger?: boolean } | null;
     if (!state?.openLogger || !canLog) return;
-    setEditingMatch(null);
     setLoggerOpen(true);
     navigate(location.pathname, { replace: true, state: null });
   }, [location.state, location.pathname, canLog, navigate]);
 
   const handleSave = async (payload: MatchFormPayload) => {
-    const saved = editingMatch ? await updateMatch(editingMatch.id, payload) : await logMatch(payload);
+    const saved = await logMatch(payload);
     if (saved) refetchPlayers();
     return saved;
-  };
-
-  const handleDelete = async (match: MatchWithDetails) => {
-    await deleteMatch(match.id);
-    refetchPlayers();
   };
 
   if (!activeSeason) {
@@ -144,21 +133,11 @@ export default function Stats() {
               />
             ) : (
               <>
-                {!readOnly && <p className="px-2 pb-1 pt-1 text-xs text-white/45">Toca un partido para editarlo.</p>}
+                <p className="px-2 pb-1 pt-1 text-xs text-white/45">Toca un partido para ver el detalle.</p>
                 <ul className="divide-y divide-pitch-700/60">
                   {matches.map((match) => (
                     <li key={match.id}>
-                      <MatchListItem
-                        match={match}
-                        onClick={
-                          readOnly
-                            ? undefined
-                            : () => {
-                                setEditingMatch(match);
-                                setLoggerOpen(true);
-                              }
-                        }
-                      />
+                      <MatchListItem match={match} to={`/stats/${match.id}`} />
                     </li>
                   ))}
                 </ul>
@@ -223,17 +202,13 @@ export default function Stats() {
 
       <MatchLoggerSheet
         open={loggerOpen}
-        match={editingMatch}
+        match={null}
         players={players}
         lineupIds={lineupIds}
         teamName={activeCareer?.club_name ?? 'Tu equipo'}
         saveError={error}
-        onClose={() => {
-          setLoggerOpen(false);
-          setEditingMatch(null);
-        }}
+        onClose={() => setLoggerOpen(false)}
         onSave={handleSave}
-        onDelete={handleDelete}
       />
     </div>
   );

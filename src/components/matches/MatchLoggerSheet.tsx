@@ -51,7 +51,8 @@ interface MatchLoggerSheetProps {
   saveError: string | null;
   onClose: () => void;
   onSave: (payload: MatchFormPayload) => Promise<boolean>;
-  onDelete: (match: MatchWithDetails) => Promise<void>;
+  /** Shows "Eliminar partido" when editing */
+  onDelete?: (match: MatchWithDetails) => Promise<void>;
 }
 
 type Step = 'result' | 'starters' | 'bench';
@@ -168,7 +169,7 @@ function MatchLogger({
   };
 
   const handleDelete = async () => {
-    if (!match) return;
+    if (!match || !onDelete) return;
     const confirmed = await confirm({
       title: `¿Eliminar el partido contra ${match.opponent}?`,
       description: 'Se quitarán sus goles, asistencias, tarjetas y partidos jugados de las estadísticas.',

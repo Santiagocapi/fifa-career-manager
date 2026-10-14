@@ -1,7 +1,7 @@
 // ============================================================
 // src/hooks/useMatches.ts
-// Hook for fetching match history, logging new matches,
-// editing past matches, and calculating Head-to-Head (H2H) records.
+// Hook for fetching a season's matches, logging new ones and
+// calculating Head-to-Head (H2H) records.
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,7 +22,7 @@ interface LogMatchPlayerEvent {
   injured: boolean;
 }
 
-interface LogMatchPayload {
+export interface LogMatchPayload {
   opponent: string;
   competition?: string;
   team_score: number;
@@ -38,8 +38,6 @@ interface UseMatchesReturn {
   loading: boolean;
   error: string | null;
   logMatch: (payload: LogMatchPayload) => Promise<boolean>;
-  updateMatch: (matchId: string, payload: LogMatchPayload) => Promise<boolean>;
-  deleteMatch: (matchId: string) => Promise<void>;
   refetch: () => void;
 }
 
@@ -47,6 +45,40 @@ interface UseMatchesReturn {
 // rows in migration 003 (a player counts as having played only if they left a trace).
 const didPlay = (e: { goals: number; assists: number; yellow_card: boolean; red_card: boolean }) =>
   e.goals > 0 || e.assists > 0 || e.yellow_card || e.red_card;
+
+// Map UI player events to the JSON shape expected by the match functions.
+// The functions run in a single transaction and recompute season_stats from the events.
+const toEventsJson = (events: LogMatchPlayerEvent[]) =>
+  events.map(e => ({
+    player_id: e.player_id,
+    played: e.played ?? didPlay(e),
+    goals: e.goals,
+    assists: e.assists,
+    yellow_card: e.yellow_card,
+    red_card: e.red_card,
+    clean_sheet: e.clean_sheet,
+    injured: e.injured,
+  }));
+
+// Editing and deleting happen on the match detail page (useMatchDetail).
+// They return the error message, or null.
+export const updateMatchRpc = async (matchId: string, payload: LogMatchPayload): Promise<string | null> => {
+  const { error } = await supabase.rpc('update_match', {
+    p_match_id: matchId,
+    p_opponent: payload.opponent,
+    p_competition: payload.competition || 'League',
+    p_team_score: payload.team_score,
+    p_opponent_score: payload.opponent_score,
+    p_mvp_player_id: payload.mvp_player_id || null,
+    p_events: toEventsJson(payload.playerEvents),
+  });
+  return error?.message ?? null;
+};
+
+export const deleteMatchRpc = async (matchId: string): Promise<string | null> => {
+  const { error } = await supabase.rpc('delete_match', { p_match_id: matchId });
+  return error?.message ?? null;
+};
 
 export const useMatches = (seasonId: string | null): UseMatchesReturn => {
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
@@ -109,20 +141,6 @@ export const useMatches = (seasonId: string | null): UseMatchesReturn => {
 
   const h2hRecords = Object.values(h2hMap).sort((a, b) => b.matchesPlayed - a.matchesPlayed);
 
-  // Map UI player events to the JSON shape expected by the match functions.
-  // The functions run in a single transaction and recompute season_stats from the events.
-  const toEventsJson = (events: LogMatchPlayerEvent[]) =>
-    events.map(e => ({
-      player_id: e.player_id,
-      played: e.played ?? didPlay(e),
-      goals: e.goals,
-      assists: e.assists,
-      yellow_card: e.yellow_card,
-      red_card: e.red_card,
-      clean_sheet: e.clean_sheet,
-      injured: e.injured,
-    }));
-
   const logMatch = async (payload: LogMatchPayload): Promise<boolean> => {
     if (!seasonId) return false;
 
@@ -146,45 +164,12 @@ export const useMatches = (seasonId: string | null): UseMatchesReturn => {
     return true;
   };
 
-  const updateMatch = async (matchId: string, payload: LogMatchPayload): Promise<boolean> => {
-    if (!seasonId) return false;
-
-    const { error: err } = await supabase.rpc('update_match', {
-      p_match_id: matchId,
-      p_opponent: payload.opponent,
-      p_competition: payload.competition || 'League',
-      p_team_score: payload.team_score,
-      p_opponent_score: payload.opponent_score,
-      p_mvp_player_id: payload.mvp_player_id || null,
-      p_events: toEventsJson(payload.playerEvents),
-    });
-
-    if (err) {
-      setError(err.message);
-      return false;
-    }
-
-    await fetchMatches();
-    return true;
-  };
-
-  const deleteMatch = async (matchId: string) => {
-    if (!seasonId) return;
-
-    const { error: err } = await supabase.rpc('delete_match', { p_match_id: matchId });
-    if (err) setError(err.message);
-
-    await fetchMatches();
-  };
-
   return {
     matches,
     h2hRecords,
     loading,
     error,
     logMatch,
-    updateMatch,
-    deleteMatch,
     refetch: fetchMatches,
   };
 };

@@ -1,9 +1,10 @@
 // ============================================================
 // src/components/matches/MatchListItem.tsx
 // One match row: result, rival, competition, MVP and score.
-// Interactive (opens the editor) when onClick is given.
+// A link to the match detail when `to` is given.
 // ============================================================
 
+import { Link } from 'react-router-dom';
 import { ChevronRight, Star } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { MatchWithDetails } from '../../types/database';
@@ -12,11 +13,12 @@ import ResultBadge from './ResultBadge';
 
 interface MatchListItemProps {
   match: MatchWithDetails;
-  onClick?: () => void;
+  /** Match detail URL; without it the row is not interactive */
+  to?: string;
   compact?: boolean;
 }
 
-export default function MatchListItem({ match, onClick, compact = false }: MatchListItemProps) {
+export default function MatchListItem({ match, to, compact = false }: MatchListItemProps) {
   const content = (
     <>
       <ResultBadge result={match.result} />
@@ -42,22 +44,21 @@ export default function MatchListItem({ match, onClick, compact = false }: Match
         <span className="mx-1 text-white/30">-</span>
         {match.opponent_score}
       </span>
-      {onClick && <ChevronRight size={18} className="flex-shrink-0 text-white/30" />}
+      {to && <ChevronRight size={18} className="flex-shrink-0 text-white/30" />}
     </>
   );
 
   const classes = clsx('flex w-full items-center gap-3 text-left', compact ? 'py-2.5' : 'p-3.5');
 
-  if (!onClick) return <div className={classes}>{content}</div>;
+  if (!to) return <div className={classes}>{content}</div>;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Editar partido contra ${match.opponent}, ${match.team_score} a ${match.opponent_score}`}
+    <Link
+      to={to}
+      aria-label={`Ver partido contra ${match.opponent}, ${match.team_score} a ${match.opponent_score}`}
       className={clsx(classes, 'rounded-2xl transition-colors active:bg-white/5 hover:bg-white/[0.03]')}
     >
       {content}
-    </button>
+    </Link>
   );
 }

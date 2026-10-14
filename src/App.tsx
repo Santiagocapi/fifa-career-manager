@@ -31,6 +31,7 @@ const Squad = lazy(() => import('./pages/Squad'));
 const PlayerProfile = lazy(() => import('./pages/PlayerProfile'));
 const Tactics = lazy(() => import('./pages/Tactics'));
 const Stats = lazy(() => import('./pages/Stats'));
+const MatchDetail = lazy(() => import('./pages/MatchDetail'));
 const Scouting = lazy(() => import('./pages/Scouting'));
 const History = lazy(() => import('./pages/History'));
 
@@ -80,6 +81,7 @@ export default function App() {
             <Route path="squad/:playerId" element={<PlayerProfile />} />
             <Route path="tactics" element={<Tactics />} />
             <Route path="stats" element={<Stats />} />
+            <Route path="stats/:matchId" element={<MatchDetail />} />
             <Route path="scouting" element={<Scouting />} />
             <Route path="history" element={<History />} />
           </Route>

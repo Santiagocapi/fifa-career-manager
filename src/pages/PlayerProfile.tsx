@@ -7,10 +7,11 @@
 // ============================================================
 
 import { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, UserX } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { UserX } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { usePlayerProfile } from '../hooks/usePlayerProfile';
+import BackButton from '../components/ui/BackButton';
 import EmptyState from '../components/ui/EmptyState';
 import InlineAlert from '../components/ui/InlineAlert';
 import PlayerFormSheet, { type PlayerFormData } from '../components/squad/PlayerFormSheet';
@@ -23,8 +24,6 @@ import RecentMatches from '../components/profile/RecentMatches';
 
 export default function PlayerProfile() {
   const { playerId } = useParams<{ playerId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { activeCareer, activeSeason } = useAppStore();
   const { player, seasons, events, loading, error, updatePlayer, updateStats } = usePlayerProfile(
     activeCareer?.id ?? null,
@@ -58,15 +57,7 @@ export default function PlayerProfile() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* The profile is opened from several screens: go back to whichever it was.
-          A direct link has no in-app history ('default' key), so fall back to the squad. */}
-      <button
-        type="button"
-        onClick={() => (location.key === 'default' ? navigate('/squad') : navigate(-1))}
-        className="btn-ghost btn-sm -mb-2 -ml-3 self-start"
-      >
-        <ChevronLeft size={16} /> Volver
-      </button>
+      <BackButton fallback="/squad" />
 
       {error && <InlineAlert>{error}</InlineAlert>}
 

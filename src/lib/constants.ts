@@ -239,6 +239,16 @@ export const getTrophyTypeLabel = (type: TrophyType): string =>
   TROPHY_TYPES.find((t) => t.value === type)?.label ?? type;
 
 // ============================================================
+// HELPERS: Date formatting
+// match_date is a DATE ("2026-08-26"). Parsing it at noon keeps
+// it on the same day in time zones west of UTC.
+// ============================================================
+
+// "2026-08-26" → "26 ago 26"
+export const formatShortDate = (isoDate: string): string =>
+  new Date(`${isoDate}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short', year: '2-digit' });
+
+// ============================================================
 // HELPERS: Money formatting
 // Values are stored in USD cents in the DB to avoid floats.
 // These helpers convert for display.

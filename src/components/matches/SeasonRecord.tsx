@@ -1,17 +1,18 @@
 // ============================================================
 // src/components/matches/SeasonRecord.tsx
-// Season balance at a glance: wins / draws / losses, goals and
-// the form guide. Used on Inicio and Partidos.
+// Balance at a glance: wins / draws / losses, goals and the
+// form guide. Used for a season (Inicio, Partidos, Historial)
+// and for the whole career (Récords). Matches newest first.
 // ============================================================
 
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
-import type { MatchWithDetails } from '../../types/database';
+import type { Match } from '../../types/database';
 import { summarizeMatches } from './matchStats';
 import { FormGuide } from './ResultBadge';
 
 interface SeasonRecordProps {
-  matches: MatchWithDetails[];
+  matches: Match[];
   loading?: boolean;
   title?: string;
   className?: string;

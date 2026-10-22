@@ -202,6 +202,11 @@ export interface MatchWithDetails extends Match {
   events: (MatchEvent & { player: Player })[];
 }
 
+// A match with its raw events, for career-wide records
+export interface CareerMatch extends Match {
+  events: MatchEvent[];
+}
+
 // A match with its details and the season it belongs to (match detail page)
 export interface MatchWithSeason extends MatchWithDetails {
   season: Season;

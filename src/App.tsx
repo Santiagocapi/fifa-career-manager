@@ -34,6 +34,7 @@ const Stats = lazy(() => import('./pages/Stats'));
 const MatchDetail = lazy(() => import('./pages/MatchDetail'));
 const Scouting = lazy(() => import('./pages/Scouting'));
 const History = lazy(() => import('./pages/History'));
+const Records = lazy(() => import('./pages/Records'));
 
 // ProtectedRoute: renders children only if user is authenticated
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="stats/:matchId" element={<MatchDetail />} />
             <Route path="scouting" element={<Scouting />} />
             <Route path="history" element={<History />} />
+            <Route path="records" element={<Records />} />
           </Route>
 
           {/* Catch-all: redirect unknown URLs to home */}

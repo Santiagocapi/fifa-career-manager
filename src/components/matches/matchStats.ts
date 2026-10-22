@@ -1,10 +1,10 @@
 // ============================================================
 // src/components/matches/matchStats.ts
-// Pure helpers that summarize a season's matches for the UI.
-// Matches arrive newest first (see useMatches).
+// Pure helpers that summarize matches for the UI (a season's,
+// or a whole career's). Matches arrive newest first.
 // ============================================================
 
-import type { MatchResult, MatchWithDetails, PlayerWithStats } from '../../types/database';
+import type { Match, MatchResult, MatchWithDetails, PlayerWithStats } from '../../types/database';
 
 export interface SeasonSummaryData {
   played: number;
@@ -19,7 +19,7 @@ export interface SeasonSummaryData {
   form: MatchResult[];
 }
 
-export function summarizeMatches(matches: MatchWithDetails[]): SeasonSummaryData {
+export function summarizeMatches(matches: Match[]): SeasonSummaryData {
   const wins = matches.filter((m) => m.result === 'win').length;
   const draws = matches.filter((m) => m.result === 'draw').length;
   const losses = matches.filter((m) => m.result === 'loss').length;

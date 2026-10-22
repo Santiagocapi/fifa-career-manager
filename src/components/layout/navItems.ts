@@ -4,7 +4,7 @@
 // desktop Sidebar and the mobile BottomNav / "Más" sheet.
 // ============================================================
 
-import { House, Shirt, Swords, Telescope, Trophy, Users, type LucideIcon } from 'lucide-react';
+import { House, Medal, Shirt, Swords, Telescope, Trophy, Users, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -22,4 +22,5 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/tactics',   label: 'Tácticas',  description: 'Formación y once inicial',    icon: Shirt,     primary: true },
   { to: '/scouting',  label: 'Mercado',   description: 'Promesas, objetivos y ventas', icon: Telescope, primary: false },
   { to: '/history',   label: 'Historial', description: 'Temporadas y trofeos',        icon: Trophy,    primary: false },
+  { to: '/records',   label: 'Récords',   description: 'Máximos de toda la carrera',  icon: Medal,     primary: false },
 ];

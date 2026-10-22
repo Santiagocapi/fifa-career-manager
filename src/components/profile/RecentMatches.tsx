@@ -9,15 +9,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Cross, Star } from 'lucide-react';
 import type { PlayerMatchEvent } from '../../types/database';
-import { getCompetitionLabel } from '../../lib/constants';
+import { formatShortDate, getCompetitionLabel } from '../../lib/constants';
 import ResultBadge from '../matches/ResultBadge';
 import EventSummary from '../matches/EventSummary';
 
 const INITIAL_COUNT = 10;
-
-const formatDate = (isoDate: string) =>
-  // Noon avoids the date shifting a day in time zones west of UTC
-  new Date(`${isoDate}T12:00:00`).toLocaleDateString('es', { day: 'numeric', month: 'short', year: '2-digit' });
 
 interface RecentMatchesProps {
   /** Played matches only, newest first */
@@ -49,7 +45,7 @@ export default function RecentMatches({ events, playerId }: RecentMatchesProps) 
                   <span className="text-white/40">vs</span> {match.opponent}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-white/50">
-                  {getCompetitionLabel(match.competition)} · {formatDate(match.match_date)}
+                  {getCompetitionLabel(match.competition)} · {formatShortDate(match.match_date)}
                 </p>
               </div>
               <span className="flex flex-shrink-0 items-center gap-1.5">
